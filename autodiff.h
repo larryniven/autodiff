@@ -30,6 +30,7 @@ namespace autodiff {
         return result;
     }
 
+    std::shared_ptr<op> var();
     std::shared_ptr<op> mult(std::shared_ptr<op> t1, std::shared_ptr<op> t2);
     std::shared_ptr<op> logistic(std::shared_ptr<op> input);
 

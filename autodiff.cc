@@ -3,11 +3,21 @@
 
 namespace autodiff {
 
+    std::shared_ptr<op> var()
+    {
+        std::shared_ptr<op> result { new op };
+
+        result->name = "var";
+
+        return result;
+    }
+
     std::shared_ptr<op> mult(std::shared_ptr<op> t1, std::shared_ptr<op> t2)
     {
         std::shared_ptr<op> result { new op };
     
         t1->parent = result.get();
+        t2->parent = result.get();
     
         result->children.emplace_back(t1);
         result->children.emplace_back(t2);
@@ -49,6 +59,10 @@ namespace autodiff {
             for (auto c: t->children) {
                 stack.push_back(c);
             }
+        }
+
+        for (int i = path.size() - 1; i >= 0; --i) {
+            funcs.at(path.at(i)->name)(path.at(i));
         }
     }
 
