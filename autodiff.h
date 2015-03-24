@@ -42,11 +42,15 @@ namespace autodiff {
     void logistic_eval(std::shared_ptr<op> t);
     void logistic_grad(std::shared_ptr<op> t);
 
+    std::shared_ptr<op> relu(std::shared_ptr<op> input);
+    void relu_eval(std::shared_ptr<op> t);
+    void relu_grad(std::shared_ptr<op> t);
+
     void eval(std::shared_ptr<op> root,
-        std::unordered_map<std::string, void(*)(std::shared_ptr<op>)> funcs);
+        std::unordered_map<std::string, std::function<void(std::shared_ptr<op>)>> funcs);
 
     void grad(std::shared_ptr<op> root,
-        std::unordered_map<std::string, void(*)(std::shared_ptr<op>)> funcs);
+        std::unordered_map<std::string, std::function<void(std::shared_ptr<op>)>> funcs);
 
     template <class T>
     T& get_output(std::shared_ptr<op> t)
@@ -60,16 +64,17 @@ namespace autodiff {
         return *static_cast<T*>(t->grad.get());
     }
 
-
-    static std::unordered_map<std::string, void(*)(std::shared_ptr<op>)> eval_funcs {
+    static std::unordered_map<std::string, std::function<void(std::shared_ptr<op>)>> eval_funcs {
         { "mult", mult_eval },
         { "logistic", logistic_eval },
+        { "relu", relu_eval },
         { "var", var_eval }
     };
 
-    static std::unordered_map<std::string, void(*)(std::shared_ptr<op>)> grad_funcs {
+    static std::unordered_map<std::string, std::function<void(std::shared_ptr<op>)>> grad_funcs {
         { "mult", mult_grad },
         { "logistic", logistic_grad },
+        { "relu", relu_grad },
         { "var", var_grad }
     };
 }

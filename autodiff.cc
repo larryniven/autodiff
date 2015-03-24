@@ -112,8 +112,48 @@ namespace autodiff {
         t->children.at(0)->grad = std::make_shared<std::vector<double>>(std::move(result));
     }
 
+    std::shared_ptr<op> relu(std::shared_ptr<op> input)
+    {
+        std::shared_ptr<op> result { new op };
+
+        input->parent = result.get();
+
+        result->children.emplace_back(input);
+    
+        result->name = "relu";
+    
+        return result;
+    }
+
+    void relu_eval(std::shared_ptr<op> t)
+    {
+        auto& v = get_output<std::vector<double>>(t->children.at(0));
+
+        std::vector<double> result;
+
+        for (int i = 0; i < v.size(); ++i) {
+            result.push_back(std::max(0.0, v.at(i)));
+        }
+
+        t->output = std::make_shared<std::vector<double>>(std::move(result));
+    }
+
+    void relu_grad(std::shared_ptr<op> t)
+    {
+        auto& output = get_output<std::vector<double>>(t);
+        auto& grad = get_grad<std::vector<double>>(t);
+
+        std::vector<double> result;
+
+        for (int i = 0; i < output.size(); ++i) {
+            result.push_back(output.at(i) > 0 ? grad.at(i) : 0);
+        }
+
+        t->children.at(0)->grad = std::make_shared<std::vector<double>>(std::move(result));
+    }
+
     void eval(std::shared_ptr<op> root,
-        std::unordered_map<std::string, void(*)(std::shared_ptr<op>)> funcs)
+        std::unordered_map<std::string, std::function<void(std::shared_ptr<op>)>> funcs)
     {
         std::vector<std::shared_ptr<op>> stack { root };
         std::vector<std::shared_ptr<op>> path;
@@ -139,7 +179,7 @@ namespace autodiff {
     }
 
     void grad(std::shared_ptr<op> root,
-        std::unordered_map<std::string, void(*)(std::shared_ptr<op>)> funcs)
+        std::unordered_map<std::string, std::function<void(std::shared_ptr<op>)>> funcs)
     {
         std::vector<std::shared_ptr<op>> stack { root };
 
