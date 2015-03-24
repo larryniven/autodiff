@@ -27,6 +27,52 @@ namespace autodiff {
         return result;
     }
     
+    void mult_eval(std::shared_ptr<op> t)
+    {
+        auto& A = get_output<std::vector<std::vector<double>>>(t->children.at(0));
+        auto& v = get_output<std::vector<double>>(t->children.at(1));
+
+        std::vector<double> result;
+        result.resize(A.size());
+
+        #pragma omp parallel for
+        for (int i = 0; i < A.size(); ++i) {
+            for (int j = 0; j < v.size(); ++j) {
+                result.at(i) += A.at(i).at(j) * v.at(j);
+            }
+        }
+
+        t->output = std::make_shared<std::vector<double>>(std::move(result));
+    }
+
+    void mult_grad(std::shared_ptr<op> t)
+    {
+        auto& grad = get_grad<std::vector<double>>(t);
+
+        auto& A = get_output<std::vector<std::vector<double>>>(t->children.at(0));
+        auto& v = get_output<std::vector<double>>(t->children.at(1));
+
+        std::vector<std::vector<double>> A_grad;
+        A_grad.resize(A.size());
+        for (int i = 0; i < A.size(); ++i) {
+            A_grad.at(i).resize(A.at(i).size());
+        }
+
+        std::vector<double> v_grad;
+        v_grad.resize(v.size());
+
+        #pragma omp parallel for
+        for (int j = 0; j < v.size(); ++j) {
+            for (int i = 0; i < A.size(); ++i) {
+                A_grad.at(i).at(j) += grad.at(i) * v.at(j);
+                v_grad.at(j) += grad.at(i) * A.at(i).at(j);
+            }
+        }
+
+        t->children.at(0)->grad = std::make_shared<std::vector<std::vector<double>>>(std::move(A_grad));
+        t->children.at(1)->grad = std::make_shared<std::vector<double>>(std::move(v_grad));
+    }
+
     std::shared_ptr<op> logistic(std::shared_ptr<op> input)
     {
         std::shared_ptr<op> result { new op };
@@ -40,8 +86,34 @@ namespace autodiff {
         return result;
     }
 
+    void logistic_eval(std::shared_ptr<op> t)
+    {
+        auto& v = get_output<std::vector<double>>(t->children.at(0));
+
+        std::vector<double> result;
+
+        for (int i = 0; i < v.size(); ++i) {
+            result.push_back(1.0 / (1.0 + std::exp(-v.at(i))));
+        }
+
+        t->output = std::make_shared<std::vector<double>>(std::move(result));
+    }
+
+    void logistic_grad(std::shared_ptr<op> t)
+    {
+        auto& output = get_output<std::vector<double>>(t);
+
+        std::vector<double> result;
+
+        for (int i = 0; i < output.size(); ++i) {
+            result.push_back(output.at(i) * (1 - output.at(i)));
+        }
+
+        t->children.at(0)->grad = std::make_shared<std::vector<double>>(std::move(result));
+    }
+
     void eval(std::shared_ptr<op> root,
-        std::unordered_map<std::string, std::function<void(std::shared_ptr<op>)>> funcs)
+        std::unordered_map<std::string, void(*)(std::shared_ptr<op>)> funcs)
     {
         std::vector<std::shared_ptr<op>> stack { root };
         std::vector<std::shared_ptr<op>> path;
@@ -67,7 +139,7 @@ namespace autodiff {
     }
 
     void grad(std::shared_ptr<op> root,
-        std::unordered_map<std::string, std::function<void(std::shared_ptr<op>)>> funcs)
+        std::unordered_map<std::string, void(*)(std::shared_ptr<op>)> funcs)
     {
         std::vector<std::shared_ptr<op>> stack { root };
 
