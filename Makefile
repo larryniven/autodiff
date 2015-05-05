@@ -7,6 +7,7 @@ all: libautodiff.a
 
 clean:
 	-rm *.o
+	-rm libautodiff.a
 
 libautodiff.a: autodiff.o
 	$(AR) rcs $@ $^

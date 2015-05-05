@@ -35,10 +35,16 @@ namespace autodiff {
         std::vector<double> result;
         result.resize(A.size());
 
-        #pragma omp parallel for
         for (int i = 0; i < A.size(); ++i) {
-            for (int j = 0; j < v.size(); ++j) {
-                result.at(i) += A.at(i).at(j) * v.at(j);
+            auto& u = A[i];
+
+            double* u_data = u.data();
+            double* v_data = v.data();
+            double* result_data = result.data();
+            int size = v.size();
+
+            for (int j = 0; j < size; ++j) {
+                result_data[i] += u_data[j] * v_data[j];
             }
         }
 
@@ -63,9 +69,10 @@ namespace autodiff {
 
         #pragma omp parallel for
         for (int j = 0; j < v.size(); ++j) {
+            auto& u = A_grad[j];
             for (int i = 0; i < A.size(); ++i) {
-                A_grad.at(i).at(j) += grad.at(i) * v.at(j);
-                v_grad.at(j) += grad.at(i) * A.at(i).at(j);
+                A_grad[i][j] += grad[i] * v[j];
+                v_grad[j] += grad[i] * u[j];
             }
         }
 
@@ -106,7 +113,7 @@ namespace autodiff {
         std::vector<double> result;
 
         for (int i = 0; i < output.size(); ++i) {
-            result.push_back(output.at(i) * (1 - output.at(i)));
+            result.push_back(output[i] * (1 - output[i]));
         }
 
         t->children.at(0)->grad = std::make_shared<std::vector<double>>(std::move(result));
@@ -132,7 +139,7 @@ namespace autodiff {
         std::vector<double> result;
 
         for (int i = 0; i < v.size(); ++i) {
-            result.push_back(std::max(0.0, v.at(i)));
+            result.push_back(std::max(0.0, v[i]));
         }
 
         t->output = std::make_shared<std::vector<double>>(std::move(result));
@@ -146,12 +153,48 @@ namespace autodiff {
         std::vector<double> result;
 
         for (int i = 0; i < output.size(); ++i) {
-            result.push_back(output.at(i) > 0 ? grad.at(i) : 0);
+            result.push_back(output[i] > 0 ? grad[i] : 0);
         }
 
         t->children.at(0)->grad = std::make_shared<std::vector<double>>(std::move(result));
     }
 
+    std::shared_ptr<op> add(std::shared_ptr<op> t1, std::shared_ptr<op> t2)
+    {
+        std::shared_ptr<op> result { new op };
+    
+        t1->parent = result.get();
+        t2->parent = result.get();
+    
+        result->children.emplace_back(t1);
+        result->children.emplace_back(t2);
+    
+        result->name = "add";
+    
+        return result;
+    }
+
+    void add_eval(std::shared_ptr<op> t)
+    {
+        auto& u = get_output<std::vector<double>>(t->children.at(0));
+        auto& v = get_output<std::vector<double>>(t->children.at(1));
+
+        std::vector<double> result;
+        result.resize(u.size());
+
+        for (int j = 0; j < u.size(); ++j) {
+            result[j] = u[j] + v[j];
+        }
+
+        t->output = std::make_shared<std::vector<double>>(std::move(result));
+    }
+
+    void add_grad(std::shared_ptr<op> t)
+    {
+        t->children.at(0)->grad = t->grad;
+        t->children.at(1)->grad = t->grad;
+    }
+    
     void eval(std::shared_ptr<op> root,
         std::unordered_map<std::string, std::function<void(std::shared_ptr<op>)>> funcs)
     {

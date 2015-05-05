@@ -46,6 +46,10 @@ namespace autodiff {
     void relu_eval(std::shared_ptr<op> t);
     void relu_grad(std::shared_ptr<op> t);
 
+    std::shared_ptr<op> add(std::shared_ptr<op> t1, std::shared_ptr<op> t2);
+    void add_eval(std::shared_ptr<op> t);
+    void add_grad(std::shared_ptr<op> t);
+
     void eval(std::shared_ptr<op> root,
         std::unordered_map<std::string, std::function<void(std::shared_ptr<op>)>> funcs);
 
@@ -68,15 +72,18 @@ namespace autodiff {
         { "mult", mult_eval },
         { "logistic", logistic_eval },
         { "relu", relu_eval },
-        { "var", var_eval }
+        { "var", var_eval },
+        { "add", add_eval }
     };
 
     static std::unordered_map<std::string, std::function<void(std::shared_ptr<op>)>> grad_funcs {
         { "mult", mult_grad },
         { "logistic", logistic_grad },
         { "relu", relu_grad },
-        { "var", var_grad }
+        { "var", var_grad },
+        { "add", add_grad }
     };
+
 }
 
 #endif
