@@ -11,7 +11,7 @@ namespace autodiff {
     struct op {
         std::vector<std::shared_ptr<op>> children;
         op *parent;
-    
+
         std::shared_ptr<void> output;
         std::shared_ptr<void> grad;
     
@@ -23,7 +23,7 @@ namespace autodiff {
     {
         std::shared_ptr<op> result { new op };
 
-        result->output = std::make_shared<typename std::remove_reference<T>::type>(std::forward<T>(t));
+        result->output = std::make_shared<typename std::decay<T>::type>(std::forward<T>(t));
 
         result->name = "var";
 
@@ -50,6 +50,10 @@ namespace autodiff {
     void add_eval(std::shared_ptr<op> t);
     void add_grad(std::shared_ptr<op> t);
 
+    std::shared_ptr<op> logsoftmax(std::shared_ptr<op> t);
+    void logsoftmax_eval(std::shared_ptr<op> t);
+    void logsoftmax_grad(std::shared_ptr<op> t);
+
     void eval(std::shared_ptr<op> root,
         std::unordered_map<std::string, std::function<void(std::shared_ptr<op>)>> funcs);
 
@@ -73,7 +77,8 @@ namespace autodiff {
         { "logistic", logistic_eval },
         { "relu", relu_eval },
         { "var", var_eval },
-        { "add", add_eval }
+        { "add", add_eval },
+        { "logsoftmax", logsoftmax_eval }
     };
 
     static std::unordered_map<std::string, std::function<void(std::shared_ptr<op>)>> grad_funcs {
@@ -81,7 +86,8 @@ namespace autodiff {
         { "logistic", logistic_grad },
         { "relu", relu_grad },
         { "var", var_grad },
-        { "add", add_grad }
+        { "add", add_grad },
+        { "logsoftmax", logsoftmax_grad }
     };
 
 }

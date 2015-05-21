@@ -1,5 +1,6 @@
 #include "autodiff/autodiff.h"
 #include <algorithm>
+#include "ebt/ebt.h"
 
 namespace autodiff {
 
@@ -58,26 +59,34 @@ namespace autodiff {
         auto& A = get_output<std::vector<std::vector<double>>>(t->children.at(0));
         auto& v = get_output<std::vector<double>>(t->children.at(1));
 
-        std::vector<std::vector<double>> A_grad;
+        if (t->children.at(0)->grad == nullptr) {
+            t->children.at(0)->grad = std::make_shared<std::vector<std::vector<double>>>(
+                std::vector<std::vector<double>>());
+        }
+
+        if (t->children.at(1)->grad == nullptr) {
+            t->children.at(1)->grad = std::make_shared<std::vector<double>>(
+                std::vector<double>());
+        }
+
+        std::vector<std::vector<double>>& A_grad
+            = get_grad<std::vector<std::vector<double>>>(t->children.at(0));
         A_grad.resize(A.size());
         for (int i = 0; i < A.size(); ++i) {
             A_grad.at(i).resize(A.at(i).size());
         }
 
-        std::vector<double> v_grad;
+        std::vector<double>& v_grad
+            = get_grad<std::vector<double>>(t->children.at(1));
         v_grad.resize(v.size());
 
         #pragma omp parallel for
         for (int j = 0; j < v.size(); ++j) {
-            auto& u = A_grad[j];
             for (int i = 0; i < A.size(); ++i) {
                 A_grad[i][j] += grad[i] * v[j];
-                v_grad[j] += grad[i] * u[j];
+                v_grad[j] += grad[i] * A[i][j];
             }
         }
-
-        t->children.at(0)->grad = std::make_shared<std::vector<std::vector<double>>>(std::move(A_grad));
-        t->children.at(1)->grad = std::make_shared<std::vector<double>>(std::move(v_grad));
     }
 
     std::shared_ptr<op> logistic(std::shared_ptr<op> input)
@@ -110,13 +119,16 @@ namespace autodiff {
     {
         auto& output = get_output<std::vector<double>>(t);
 
-        std::vector<double> result;
-
-        for (int i = 0; i < output.size(); ++i) {
-            result.push_back(output[i] * (1 - output[i]));
+        if (t->children.at(0)->grad == nullptr) {
+            t->children.at(0)->grad = std::make_shared<std::vector<double>>(std::vector<double>());
         }
 
-        t->children.at(0)->grad = std::make_shared<std::vector<double>>(std::move(result));
+        std::vector<double>& result = get_grad<std::vector<double>>(t->children.at(0));
+        result.resize(output.size());
+
+        for (int i = 0; i < output.size(); ++i) {
+            result[i] += output[i] * (1 - output[i]);
+        }
     }
 
     std::shared_ptr<op> relu(std::shared_ptr<op> input)
@@ -150,13 +162,16 @@ namespace autodiff {
         auto& output = get_output<std::vector<double>>(t);
         auto& grad = get_grad<std::vector<double>>(t);
 
-        std::vector<double> result;
-
-        for (int i = 0; i < output.size(); ++i) {
-            result.push_back(output[i] > 0 ? grad[i] : 0);
+        if (t->children.at(0)->grad == nullptr) {
+            t->children.at(0)->grad = std::make_shared<std::vector<double>>(std::vector<double>());
         }
 
-        t->children.at(0)->grad = std::make_shared<std::vector<double>>(std::move(result));
+        std::vector<double>& result = get_grad<std::vector<double>>(t->children.at(0));
+        result.resize(output.size());
+
+        for (int i = 0; i < output.size(); ++i) {
+            result[i] += (output[i] > 0 ? grad[i] : 0);
+        }
     }
 
     std::shared_ptr<op> add(std::shared_ptr<op> t1, std::shared_ptr<op> t2)
@@ -191,8 +206,79 @@ namespace autodiff {
 
     void add_grad(std::shared_ptr<op> t)
     {
-        t->children.at(0)->grad = t->grad;
-        t->children.at(1)->grad = t->grad;
+        if (t->children.at(0)->grad == nullptr) {
+            t->children.at(0)->grad = std::make_shared<std::vector<double>>(std::vector<double>());
+        }
+
+        if (t->children.at(1)->grad == nullptr) {
+            t->children.at(1)->grad = std::make_shared<std::vector<double>>(std::vector<double>());
+        }
+
+        std::vector<double> const& grad = get_grad<std::vector<double>>(t);
+
+        std::vector<double>& left = get_grad<std::vector<double>>(t->children.at(0));
+        left.resize(grad.size());
+        std::vector<double>& right = get_grad<std::vector<double>>(t->children.at(1));
+        right.resize(grad.size());
+
+        for (int i = 0; i < grad.size(); ++i) {
+            left[i] += grad[i];
+            right[i] += grad[i];
+        }
+    }
+    
+    std::shared_ptr<op> logsoftmax(std::shared_ptr<op> t)
+    {
+        std::shared_ptr<op> result { new op };
+    
+        t->parent = result.get();
+    
+        result->children.emplace_back(t);
+    
+        result->name = "logsoftmax";
+    
+        return result;
+    }
+
+    void logsoftmax_eval(std::shared_ptr<op> t)
+    {
+        auto& v = get_output<std::vector<double>>(t->children.at(0));
+
+        std::vector<double> result;
+        result.resize(v.size());
+
+        double logZ = -std::numeric_limits<double>::infinity();
+        for (int j = 0; j < v.size(); ++j) {
+            logZ = ebt::log_add(logZ, v[j]);
+        }
+
+        for (int i = 0; i < v.size(); ++i) {
+            result[i] = v[i] - logZ;
+        }
+
+        t->output = std::make_shared<std::vector<double>>(std::move(result));
+    }
+
+    void logsoftmax_grad(std::shared_ptr<op> t)
+    {
+        if (t->children.at(0)->grad == nullptr) {
+            t->children.at(0)->grad = std::make_shared<std::vector<double>>(std::vector<double>());
+        }
+
+        std::vector<double> const& output = get_output<std::vector<double>>(t);
+        std::vector<double> const& grad = get_grad<std::vector<double>>(t);
+
+        std::vector<double>& result = get_grad<std::vector<double>>(t->children.at(0));
+        result.resize(grad.size());
+
+        double Z = 0;
+        for (int i = 0; i < grad.size(); ++i) {
+            Z += grad[i];
+        }
+
+        for (int i = 0; i < grad.size(); ++i) {
+            result[i] = result[i] - std::exp(output[i]) * Z;
+        }
     }
     
     void eval(std::shared_ptr<op> root,
