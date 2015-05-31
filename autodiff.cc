@@ -4,6 +4,10 @@
 
 namespace autodiff {
 
+    op::op()
+        : output(nullptr), grad(nullptr)
+    {}
+
     std::shared_ptr<op> var()
     {
         std::shared_ptr<op> result { new op };
@@ -33,23 +37,23 @@ namespace autodiff {
         auto& A = get_output<std::vector<std::vector<double>>>(t->children.at(0));
         auto& v = get_output<std::vector<double>>(t->children.at(1));
 
-        std::vector<double> result;
-        result.resize(A.size());
+        if (t->output == nullptr) {
+            std::vector<double> z;
+            z.resize(A.size());
+            t->output = std::make_shared<std::vector<double>>(std::move(z));
+        }
+
+        std::vector<double>& result = get_output<std::vector<double>>(t);
 
         for (int i = 0; i < A.size(); ++i) {
             auto& u = A[i];
+            result[i] = 0;
 
-            double* u_data = u.data();
-            double* v_data = v.data();
-            double* result_data = result.data();
-            int size = v.size();
-
-            for (int j = 0; j < size; ++j) {
-                result_data[i] += u_data[j] * v_data[j];
+            for (int j = 0; j < v.size(); ++j) {
+                result[i] += u[j] * v[j];
             }
         }
 
-        t->output = std::make_shared<std::vector<double>>(std::move(result));
     }
 
     void mult_grad(std::shared_ptr<op> t)
@@ -106,13 +110,18 @@ namespace autodiff {
     {
         auto& v = get_output<std::vector<double>>(t->children.at(0));
 
-        std::vector<double> result;
-
-        for (int i = 0; i < v.size(); ++i) {
-            result.push_back(1.0 / (1.0 + std::exp(-v.at(i))));
+        if (t->output == nullptr) {
+            std::vector<double> result;
+            result.resize(v.size());
+            t->output = std::make_shared<std::vector<double>>(std::move(result));
         }
 
-        t->output = std::make_shared<std::vector<double>>(std::move(result));
+        std::vector<double>& result = get_output<std::vector<double>>(t);
+
+        for (int i = 0; i < v.size(); ++i) {
+            result[i] = 1.0 / (1.0 + std::exp(-v.at(i)));
+        }
+
     }
 
     void logistic_grad(std::shared_ptr<op> t)
@@ -148,13 +157,17 @@ namespace autodiff {
     {
         auto& v = get_output<std::vector<double>>(t->children.at(0));
 
-        std::vector<double> result;
-
-        for (int i = 0; i < v.size(); ++i) {
-            result.push_back(std::max(0.0, v[i]));
+        if (t->output == nullptr) {
+            std::vector<double> result;
+            result.resize(v.size());
+            t->output = std::make_shared<std::vector<double>>(std::move(result));
         }
 
-        t->output = std::make_shared<std::vector<double>>(std::move(result));
+        std::vector<double>& result = get_output<std::vector<double>>(t);
+
+        for (int i = 0; i < v.size(); ++i) {
+            result[i] = std::max(0.0, v[i]);
+        }
     }
 
     void relu_grad(std::shared_ptr<op> t)
@@ -194,14 +207,17 @@ namespace autodiff {
         auto& u = get_output<std::vector<double>>(t->children.at(0));
         auto& v = get_output<std::vector<double>>(t->children.at(1));
 
-        std::vector<double> result;
-        result.resize(u.size());
+        if (t->output == nullptr) {
+            std::vector<double> result;
+            result.resize(u.size());
+            t->output = std::make_shared<std::vector<double>>(std::move(result));
+        }
+
+        std::vector<double>& result = get_output<std::vector<double>>(t);
 
         for (int j = 0; j < u.size(); ++j) {
             result[j] = u[j] + v[j];
         }
-
-        t->output = std::make_shared<std::vector<double>>(std::move(result));
     }
 
     void add_grad(std::shared_ptr<op> t)
@@ -244,8 +260,13 @@ namespace autodiff {
     {
         auto& v = get_output<std::vector<double>>(t->children.at(0));
 
-        std::vector<double> result;
-        result.resize(v.size());
+        if (t->output == nullptr) {
+            std::vector<double> result;
+            result.resize(v.size());
+            t->output = std::make_shared<std::vector<double>>(std::move(result));
+        }
+
+        std::vector<double>& result = get_output<std::vector<double>>(t);
 
         double logZ = -std::numeric_limits<double>::infinity();
         for (int j = 0; j < v.size(); ++j) {
@@ -256,7 +277,6 @@ namespace autodiff {
             result[i] = v[i] - logZ;
         }
 
-        t->output = std::make_shared<std::vector<double>>(std::move(result));
     }
 
     void logsoftmax_grad(std::shared_ptr<op> t)

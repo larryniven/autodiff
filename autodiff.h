@@ -9,6 +9,8 @@
 namespace autodiff {
 
     struct op {
+        op();
+
         std::vector<std::shared_ptr<op>> children;
         op *parent;
 
