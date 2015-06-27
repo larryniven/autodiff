@@ -301,6 +301,40 @@ namespace autodiff {
         }
     }
     
+    void clear_output(std::shared_ptr<op> root)
+    {
+        std::vector<std::shared_ptr<op>> stack { root };
+        std::vector<std::shared_ptr<op>> path;
+
+        while (stack.size() != 0) {
+            std::shared_ptr<op> t = stack.back();
+            stack.pop_back();
+
+            t->output = nullptr;
+
+            for (auto c: t->children) {
+                stack.push_back(c);
+            }
+        }
+    }
+
+    void clear_grad(std::shared_ptr<op> root)
+    {
+        std::vector<std::shared_ptr<op>> stack { root };
+        std::vector<std::shared_ptr<op>> path;
+
+        while (stack.size() != 0) {
+            std::shared_ptr<op> t = stack.back();
+            stack.pop_back();
+
+            t->grad = nullptr;
+
+            for (auto c: t->children) {
+                stack.push_back(c);
+            }
+        }
+    }
+
     void eval(std::shared_ptr<op> root,
         std::unordered_map<std::string, std::function<void(std::shared_ptr<op>)>> funcs)
     {
