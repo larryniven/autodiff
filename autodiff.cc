@@ -297,7 +297,7 @@ namespace autodiff {
         }
 
         for (int i = 0; i < grad.size(); ++i) {
-            result[i] = result[i] - std::exp(output[i]) * Z;
+            result[i] = grad[i] - std::exp(output[i]) * Z;
         }
     }
     
