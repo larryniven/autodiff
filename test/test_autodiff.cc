@@ -52,6 +52,70 @@ std::vector<std::function<void(void)>> tests {
         ebt::assert_equals(39, x_grad.at(0));
         ebt::assert_equals(54, x_grad.at(1));
         ebt::assert_equals(69, x_grad.at(2));
+    },
+
+    []()
+    {
+        std::vector<double> x { 1, 2, 3 };
+        std::vector<double> expected {
+            -2.4076059644438, -1.4076059644438, -0.4076059644438 };
+
+        auto t = autodiff::logsoftmax(autodiff::var(x));
+        autodiff::eval(t, autodiff::eval_funcs);
+        auto& result = autodiff::get_output<std::vector<double>>(t);
+
+        ebt::assert_equals(expected[0], result[0]);
+        ebt::assert_equals(expected[1], result[1]);
+        ebt::assert_equals(expected[2], result[2]);
+
+        {
+            std::vector<double> grad { 1, 0, 0 };
+            std::vector<double> grad_expected {
+                0.909969426716728, -0.24472847121259633, -0.665240955655122 };
+
+            t->grad = std::make_shared<std::vector<double>>(grad);
+            autodiff::grad(t, autodiff::grad_funcs);
+
+            auto& grad_result = autodiff::get_grad<std::vector<double>>(t->children.at(0));
+
+            ebt::assert_equals(grad_expected[0], grad_result[0]);
+            ebt::assert_equals(grad_expected[1], grad_result[1]);
+            ebt::assert_equals(grad_expected[2], grad_result[2]);
+        }
+
+        {
+            autodiff::clear_grad(t);
+
+            std::vector<double> grad { 0, 1, 0 };
+            std::vector<double> grad_expected {
+                -0.09003057328316189, 0.7552715287884038, -0.665240955655122 };
+
+            t->grad = std::make_shared<std::vector<double>>(grad);
+            autodiff::grad(t, autodiff::grad_funcs);
+
+            auto& grad_result = autodiff::get_grad<std::vector<double>>(t->children.at(0));
+
+            ebt::assert_equals(grad_expected[0], grad_result[0]);
+            ebt::assert_equals(grad_expected[1], grad_result[1]);
+            ebt::assert_equals(grad_expected[2], grad_result[2]);
+        }
+
+        {
+            autodiff::clear_grad(t);
+
+            std::vector<double> grad { 0, 0, 1 };
+            std::vector<double> grad_expected {
+                -0.09003057328316189, -0.24472847121259633, 0.33475904434698833 };
+
+            t->grad = std::make_shared<std::vector<double>>(grad);
+            autodiff::grad(t, autodiff::grad_funcs);
+
+            auto& grad_result = autodiff::get_grad<std::vector<double>>(t->children.at(0));
+
+            ebt::assert_equals(grad_expected[0], grad_result[0]);
+            ebt::assert_equals(grad_expected[1], grad_result[1]);
+            ebt::assert_equals(grad_expected[2], grad_result[2]);
+        }
     }
 };
 

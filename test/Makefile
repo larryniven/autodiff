@@ -1,4 +1,4 @@
-CXXFLAGS += -std=c++11 -I ../../
+CXXFLAGS += -std=c++11 -I ../../ -L../../ebt
 
 .PHONY: all clean
 
@@ -9,5 +9,5 @@ clean:
 	-rm test_autodiff
 
 test_autodiff: test_autodiff.o ../autodiff.o
-	$(CXX) $(CXXFLAGS) -o $@ $^
+	$(CXX) $(CXXFLAGS) -o $@ $^ -lebt
 
