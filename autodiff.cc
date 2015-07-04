@@ -243,6 +243,64 @@ namespace autodiff {
         }
     }
     
+    std::shared_ptr<op> softmax(std::shared_ptr<op> t)
+    {
+        std::shared_ptr<op> result { new op };
+    
+        t->parent = result.get();
+    
+        result->children.emplace_back(t);
+    
+        result->name = "softmax";
+    
+        return result;
+    }
+
+    void softmax_eval(std::shared_ptr<op> t)
+    {
+        auto& v = get_output<std::vector<double>>(t->children.at(0));
+
+        if (t->output == nullptr) {
+            std::vector<double> result;
+            result.resize(v.size());
+            t->output = std::make_shared<std::vector<double>>(std::move(result));
+        }
+
+        std::vector<double>& result = get_output<std::vector<double>>(t);
+
+        double logZ = -std::numeric_limits<double>::infinity();
+        for (int j = 0; j < v.size(); ++j) {
+            logZ = ebt::log_add(logZ, v[j]);
+        }
+
+        for (int i = 0; i < v.size(); ++i) {
+            result[i] = std::exp(v[i] - logZ);
+        }
+
+    }
+
+    void softmax_grad(std::shared_ptr<op> t)
+    {
+        if (t->children.at(0)->grad == nullptr) {
+            t->children.at(0)->grad = std::make_shared<std::vector<double>>(std::vector<double>());
+        }
+
+        std::vector<double> const& output = get_output<std::vector<double>>(t);
+        std::vector<double> const& grad = get_grad<std::vector<double>>(t);
+
+        std::vector<double>& result = get_grad<std::vector<double>>(t->children.at(0));
+        result.resize(grad.size());
+
+        double Z = 0;
+        for (int i = 0; i < grad.size(); ++i) {
+            Z += grad[i] * output[i];
+        }
+
+        for (int i = 0; i < grad.size(); ++i) {
+            result[i] += output[i] * (grad[i] - Z);
+        }
+    }
+    
     std::shared_ptr<op> logsoftmax(std::shared_ptr<op> t)
     {
         std::shared_ptr<op> result { new op };

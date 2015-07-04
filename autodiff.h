@@ -52,6 +52,10 @@ namespace autodiff {
     void add_eval(std::shared_ptr<op> t);
     void add_grad(std::shared_ptr<op> t);
 
+    std::shared_ptr<op> softmax(std::shared_ptr<op> t);
+    void softmax_eval(std::shared_ptr<op> t);
+    void softmax_grad(std::shared_ptr<op> t);
+
     std::shared_ptr<op> logsoftmax(std::shared_ptr<op> t);
     void logsoftmax_eval(std::shared_ptr<op> t);
     void logsoftmax_grad(std::shared_ptr<op> t);
@@ -83,6 +87,7 @@ namespace autodiff {
         { "relu", relu_eval },
         { "var", var_eval },
         { "add", add_eval },
+        { "softmax", softmax_eval },
         { "logsoftmax", logsoftmax_eval }
     };
 
@@ -92,6 +97,7 @@ namespace autodiff {
         { "relu", relu_grad },
         { "var", var_grad },
         { "add", add_grad },
+        { "softmax", softmax_grad },
         { "logsoftmax", logsoftmax_grad }
     };
 
