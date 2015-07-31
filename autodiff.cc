@@ -359,6 +359,62 @@ namespace autodiff {
         }
     }
     
+    std::shared_ptr<op> transpose(std::shared_ptr<op> t)
+    {
+        std::shared_ptr<op> result { new op };
+    
+        t->parent = result.get();
+    
+        result->children.emplace_back(t);
+    
+        result->name = "transpose";
+    
+        return result;
+    }
+
+    void transpose_eval(std::shared_ptr<op> t)
+    {
+        auto& A = get_output<std::vector<std::vector<double>>>(t->children.at(0));
+
+        if (t->output == nullptr) {
+            std::vector<std::vector<double>> result;
+            result.resize(A.front().size());
+            for (auto& v: result) {
+                v.resize(A.size());
+            }
+            t->output = std::make_shared<std::vector<std::vector<double>>>(std::move(result));
+        }
+
+        std::vector<std::vector<double>>& result = get_output<std::vector<std::vector<double>>>(t);
+
+        for (int i = 0; i < A.size(); ++i) {
+            for (int j = 0; j < A[i].size(); ++j) {
+                result[j][i] = A[i][j];
+            }
+        }
+    }
+
+    void transpose_grad(std::shared_ptr<op> t)
+    {
+        if (t->children.at(0)->grad == nullptr) {
+            t->children.at(0)->grad = std::make_shared<std::vector<double>>(std::vector<double>());
+        }
+
+        std::vector<std::vector<double>> const& grad = get_grad<std::vector<std::vector<double>>>(t);
+
+        std::vector<std::vector<double>>& result = get_grad<std::vector<std::vector<double>>>(t->children.at(0));
+        result.resize(grad.front().size());
+        for (auto& v: result) {
+            v.resize(grad.size());
+        }
+
+        for (int i = 0; i < grad.size(); ++i) {
+            for (int j = 0; j < grad[i].size(); ++j) {
+                result[j][i] += grad[i][j];
+            }
+        }
+    }
+    
     void clear_output(std::shared_ptr<op> root)
     {
         std::vector<std::shared_ptr<op>> stack { root };
@@ -401,20 +457,47 @@ namespace autodiff {
 
         while (stack.size() != 0) {
             std::shared_ptr<op> t = stack.back();
+
+            // std::cout << "t: " << t->name << " (" << t.get() << ")" << std::endl;
+            // std::cout << "parent of t: " << t->parent << std::endl;
+
+            // std::cout << "path: ";
+            // for (auto& c: path) {
+            //     std::cout << c->name << " (" << c.get() << ") ";
+            // }
+            // std::cout << std::endl;
+
+            // std::cout << "stack: " << std::endl;
+            // for (auto& c: stack) {
+            //     std::cout << "  " << c->name << std::endl;
+            // }
+
             stack.pop_back();
 
-            while (path.size() > 0 && path.back().get() != t->parent) {
+            auto is_parent = [](std::shared_ptr<autodiff::op> p, std::shared_ptr<autodiff::op> t) {
+                for (auto& c: p->children) {
+                    if (c.get() == t.get()) {
+                        return true;
+                    }
+                }
+                return false;
+            };
+
+            while (path.size() > 0 && !is_parent(path.back(), t)) {
+                // std::cout << path.back()->name << std::endl;
                 funcs.at(path.back()->name)(path.back());
                 path.pop_back();
             }
             path.push_back(t);
 
             for (auto c: t->children) {
+                // std::cout << "child of " << t->name << ": " << c->name << std::endl;
                 stack.push_back(c);
             }
         }
 
         for (int i = path.size() - 1; i >= 0; --i) {
+            // std::cout << path.at(i)->name << std::endl;
             funcs.at(path.at(i)->name)(path.at(i));
         }
     }

@@ -60,6 +60,10 @@ namespace autodiff {
     void logsoftmax_eval(std::shared_ptr<op> t);
     void logsoftmax_grad(std::shared_ptr<op> t);
 
+    std::shared_ptr<op> transpose(std::shared_ptr<op> t);
+    void transpose_eval(std::shared_ptr<op> t);
+    void transpose_grad(std::shared_ptr<op> t);
+
     void clear_output(std::shared_ptr<op> root);
     void clear_grad(std::shared_ptr<op> root);
 
@@ -88,7 +92,8 @@ namespace autodiff {
         { "var", var_eval },
         { "add", add_eval },
         { "softmax", softmax_eval },
-        { "logsoftmax", logsoftmax_eval }
+        { "logsoftmax", logsoftmax_eval },
+        { "transpose", transpose_eval }
     };
 
     static std::unordered_map<std::string, std::function<void(std::shared_ptr<op>)>> grad_funcs {
@@ -98,7 +103,8 @@ namespace autodiff {
         { "var", var_grad },
         { "add", add_grad },
         { "softmax", softmax_grad },
-        { "logsoftmax", logsoftmax_grad }
+        { "logsoftmax", logsoftmax_grad },
+        { "transpose", transpose_grad }
     };
 
 }
