@@ -1,6 +1,7 @@
 #include "autodiff/autodiff.h"
 #include <algorithm>
 #include "ebt/ebt.h"
+#include <cassert>
 
 namespace autodiff {
 
@@ -36,6 +37,9 @@ namespace autodiff {
     {
         auto& A = get_output<std::vector<std::vector<double>>>(t->children.at(0));
         auto& v = get_output<std::vector<double>>(t->children.at(1));
+
+        assert(A.size() > 0);
+        assert(A.front().size() == v.size());
 
         if (t->output == nullptr) {
             std::vector<double> z;
@@ -206,6 +210,8 @@ namespace autodiff {
     {
         auto& u = get_output<std::vector<double>>(t->children.at(0));
         auto& v = get_output<std::vector<double>>(t->children.at(1));
+
+        assert(u.size() == v.size());
 
         if (t->output == nullptr) {
             std::vector<double> result;
