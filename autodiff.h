@@ -12,7 +12,6 @@ namespace autodiff {
         op();
 
         std::vector<std::shared_ptr<op>> children;
-        op *parent;
 
         std::shared_ptr<void> output;
         std::shared_ptr<void> grad;
@@ -44,10 +43,15 @@ namespace autodiff {
     void logistic_eval(std::shared_ptr<op> t);
     void logistic_grad(std::shared_ptr<op> t);
 
+    std::shared_ptr<op> logistic2d(std::shared_ptr<op> input);
+    void logistic2d_eval(std::shared_ptr<op> t);
+    void logistic2d_grad(std::shared_ptr<op> t);
+
     std::shared_ptr<op> relu(std::shared_ptr<op> input);
     void relu_eval(std::shared_ptr<op> t);
     void relu_grad(std::shared_ptr<op> t);
 
+    std::shared_ptr<op> add(std::vector<std::shared_ptr<op>> t);
     std::shared_ptr<op> add(std::shared_ptr<op> t1, std::shared_ptr<op> t2);
     void add_eval(std::shared_ptr<op> t);
     void add_grad(std::shared_ptr<op> t);
@@ -64,8 +68,19 @@ namespace autodiff {
     void transpose_eval(std::shared_ptr<op> t);
     void transpose_grad(std::shared_ptr<op> t);
 
+    std::shared_ptr<op> conv(std::shared_ptr<op> t1, std::shared_ptr<op> t2);
+    void conv_eval(std::shared_ptr<op> t);
+    void conv_grad(std::shared_ptr<op> t);
+
+    std::shared_ptr<op> linearize(std::shared_ptr<op> t);
+    void linearize_eval(std::shared_ptr<op> t);
+    void linearize_grad(std::shared_ptr<op> t);
+
     void clear_output(std::shared_ptr<op> root);
     void clear_grad(std::shared_ptr<op> root);
+
+    void eval_vertex(std::shared_ptr<op> t,
+        std::unordered_map<std::string, std::function<void(std::shared_ptr<op>)>> funcs);
 
     void eval(std::shared_ptr<op> root,
         std::unordered_map<std::string, std::function<void(std::shared_ptr<op>)>> funcs);
@@ -93,7 +108,10 @@ namespace autodiff {
         { "add", add_eval },
         { "softmax", softmax_eval },
         { "logsoftmax", logsoftmax_eval },
-        { "transpose", transpose_eval }
+        { "transpose", transpose_eval },
+        { "conv", conv_eval },
+        { "linearize", linearize_eval },
+        { "logistic2d", logistic2d_eval }
     };
 
     static std::unordered_map<std::string, std::function<void(std::shared_ptr<op>)>> grad_funcs {
@@ -104,7 +122,10 @@ namespace autodiff {
         { "add", add_grad },
         { "softmax", softmax_grad },
         { "logsoftmax", logsoftmax_grad },
-        { "transpose", transpose_grad }
+        { "transpose", transpose_grad },
+        { "conv", conv_grad },
+        { "linearize", linearize_grad },
+        { "logistic2d", logistic2d_grad }
     };
 
 }

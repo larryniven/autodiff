@@ -22,9 +22,6 @@ namespace autodiff {
     {
         std::shared_ptr<op> result { new op };
     
-        t1->parent = result.get();
-        t2->parent = result.get();
-    
         result->children.emplace_back(t1);
         result->children.emplace_back(t2);
     
@@ -101,8 +98,6 @@ namespace autodiff {
     {
         std::shared_ptr<op> result { new op };
 
-        input->parent = result.get();
-
         result->children.emplace_back(input);
     
         result->name = "logistic";
@@ -144,11 +139,67 @@ namespace autodiff {
         }
     }
 
-    std::shared_ptr<op> relu(std::shared_ptr<op> input)
+    std::shared_ptr<op> logistic2d(std::shared_ptr<op> input)
     {
         std::shared_ptr<op> result { new op };
 
-        input->parent = result.get();
+        result->children.emplace_back(input);
+    
+        result->name = "logistic2d";
+    
+        return result;
+    }
+
+    void logistic2d_eval(std::shared_ptr<op> t)
+    {
+        auto& A = get_output<std::vector<std::vector<double>>>(t->children.at(0));
+
+        assert(A.size() > 0);
+
+        if (t->output == nullptr) {
+            std::vector<std::vector<double>> result;
+            result.resize(A.size());
+            for (auto& v: result) {
+                v.resize(A.front().size());
+            }
+            t->output = std::make_shared<std::vector<std::vector<double>>>(std::move(result));
+        }
+
+        std::vector<std::vector<double>>& result = get_output<std::vector<std::vector<double>>>(t);
+
+        for (int i = 0; i < result.size(); ++i) {
+            for (int j = 0; j < result[i].size(); ++j) {
+                result[i][j] = 1.0 / (1.0 + std::exp(-A[i][j]));
+            }
+        }
+
+    }
+
+    void logistic2d_grad(std::shared_ptr<op> t)
+    {
+        auto& output = get_output<std::vector<std::vector<double>>>(t);
+
+        if (t->children.at(0)->grad == nullptr) {
+            t->children.at(0)->grad = std::make_shared<std::vector<std::vector<double>>>(
+                std::vector<std::vector<double>>());
+        }
+
+        std::vector<std::vector<double>>& result = get_grad<std::vector<std::vector<double>>>(t->children.at(0));
+        result.resize(output.size());
+        for (auto& v: result) {
+            v.resize(output.front().size());
+        }
+
+        for (int i = 0; i < result.size(); ++i) {
+            for (int j = 0; j < result[i].size(); ++j) {
+                result[i][j] += output[i][j] * (1 - output[i][j]);
+            }
+        }
+    }
+
+    std::shared_ptr<op> relu(std::shared_ptr<op> input)
+    {
+        std::shared_ptr<op> result { new op };
 
         result->children.emplace_back(input);
     
@@ -191,12 +242,19 @@ namespace autodiff {
         }
     }
 
+    std::shared_ptr<op> add(std::vector<std::shared_ptr<op>> ts)
+    {
+        std::shared_ptr<op> result { new op };
+        result->children = std::move(ts);
+
+        result->name = "add";
+
+        return result;
+    }
+
     std::shared_ptr<op> add(std::shared_ptr<op> t1, std::shared_ptr<op> t2)
     {
         std::shared_ptr<op> result { new op };
-    
-        t1->parent = result.get();
-        t2->parent = result.get();
     
         result->children.emplace_back(t1);
         result->children.emplace_back(t2);
@@ -208,52 +266,56 @@ namespace autodiff {
 
     void add_eval(std::shared_ptr<op> t)
     {
-        auto& u = get_output<std::vector<double>>(t->children.at(0));
-        auto& v = get_output<std::vector<double>>(t->children.at(1));
+        assert(t->children.size() > 0);
 
-        assert(u.size() == v.size());
+#ifndef NDEBUG
+        for (int i = 1; i < t->children.size(); ++i) {
+            assert(get_output<std::vector<double>>(t->children.at(i-1)).size()
+                == get_output<std::vector<double>>(t->children.at(i)).size());
+        }
+#endif
 
-        if (t->output == nullptr) {
-            std::vector<double> result;
-            result.resize(u.size());
-            t->output = std::make_shared<std::vector<double>>(std::move(result));
+        std::vector<double> result;
+        result.resize(get_output<std::vector<double>>(t->children.front()).size());
+
+        for (auto& c: t->children) {
+            auto& u = get_output<std::vector<double>>(c);
+
+            for (int j = 0; j < u.size(); ++j) {
+                result[j] += u[j];
+            }
         }
 
-        std::vector<double>& result = get_output<std::vector<double>>(t);
-
-        for (int j = 0; j < u.size(); ++j) {
-            result[j] = u[j] + v[j];
-        }
+        t->output = std::make_shared<std::vector<double>>(std::move(result));
     }
 
     void add_grad(std::shared_ptr<op> t)
     {
-        if (t->children.at(0)->grad == nullptr) {
-            t->children.at(0)->grad = std::make_shared<std::vector<double>>(std::vector<double>());
-        }
-
-        if (t->children.at(1)->grad == nullptr) {
-            t->children.at(1)->grad = std::make_shared<std::vector<double>>(std::vector<double>());
+        for (auto& c: t->children) {
+            if (c->grad == nullptr) {
+                c->grad = std::make_shared<std::vector<double>>(std::vector<double>());
+            }
         }
 
         std::vector<double> const& grad = get_grad<std::vector<double>>(t);
 
-        std::vector<double>& left = get_grad<std::vector<double>>(t->children.at(0));
-        left.resize(grad.size());
-        std::vector<double>& right = get_grad<std::vector<double>>(t->children.at(1));
-        right.resize(grad.size());
+        for (auto& c: t->children) {
+            auto& u = get_grad<std::vector<double>>(c);
+            u.resize(grad.size());
+        }
 
-        for (int i = 0; i < grad.size(); ++i) {
-            left[i] += grad[i];
-            right[i] += grad[i];
+        for (auto& c: t->children) {
+            auto& u = get_grad<std::vector<double>>(c);
+
+            for (int i = 0; i < grad.size(); ++i) {
+                u[i] += grad[i];
+            }
         }
     }
     
     std::shared_ptr<op> softmax(std::shared_ptr<op> t)
     {
         std::shared_ptr<op> result { new op };
-    
-        t->parent = result.get();
     
         result->children.emplace_back(t);
     
@@ -311,8 +373,6 @@ namespace autodiff {
     {
         std::shared_ptr<op> result { new op };
     
-        t->parent = result.get();
-    
         result->children.emplace_back(t);
     
         result->name = "logsoftmax";
@@ -369,8 +429,6 @@ namespace autodiff {
     {
         std::shared_ptr<op> result { new op };
     
-        t->parent = result.get();
-    
         result->children.emplace_back(t);
     
         result->name = "transpose";
@@ -421,6 +479,158 @@ namespace autodiff {
         }
     }
     
+    std::shared_ptr<op> conv(std::shared_ptr<op> t1, std::shared_ptr<op> t2)
+    {
+        std::shared_ptr<op> result { new op };
+    
+        result->children.emplace_back(t1);
+        result->children.emplace_back(t2);
+    
+        result->name = "conv";
+    
+        return result;
+    }
+
+    void conv_eval(std::shared_ptr<op> t)
+    {
+        auto& image = get_output<std::vector<std::vector<double>>>(t->children.at(0));
+        auto& filter = get_output<std::vector<std::vector<double>>>(t->children.at(1));
+
+        if (t->output == nullptr) {
+            std::vector<std::vector<double>> result;
+            result.resize(image.size());
+            for (auto& v: result) {
+                v.resize(image.front().size());
+            }
+            t->output = std::make_shared<std::vector<std::vector<double>>>(std::move(result));
+        }
+
+        std::vector<std::vector<double>>& result = get_output<std::vector<std::vector<double>>>(t);
+
+        for (int m = 0; m < result.size(); ++m) {
+            for (int n = 0; n < result[m].size(); ++n) {
+                double sum = 0;
+                for (int i = 0; i < filter.size() && 0 <= m-i && m-i < image.size(); ++i) {
+                    for (int j = 0; j < filter[i].size() && 0 <= n-j && n-j < image[m-i].size(); ++j) {
+                        sum += image[m-i][n-j] * filter[i][j];
+                    }
+                }
+                result[m][n] = sum;
+            }
+        }
+    }
+
+    void conv_grad(std::shared_ptr<op> t)
+    {
+        if (t->children.at(0)->grad == nullptr) {
+            t->children.at(0)->grad = std::make_shared<std::vector<std::vector<double>>>(
+                std::vector<std::vector<double>>());
+        }
+
+        if (t->children.at(1)->grad == nullptr) {
+            t->children.at(1)->grad = std::make_shared<std::vector<std::vector<double>>>(
+                std::vector<std::vector<double>>());
+        }
+
+        std::vector<std::vector<double>> const& grad = get_grad<std::vector<std::vector<double>>>(t);
+
+        std::vector<std::vector<double>> const& image = get_output<std::vector<std::vector<double>>>(t->children.at(0));
+        std::vector<std::vector<double>> const& filter = get_output<std::vector<std::vector<double>>>(t->children.at(1));
+
+        std::vector<std::vector<double>>& image_grad = get_grad<std::vector<std::vector<double>>>(t->children.at(0));
+        image_grad.resize(image.size());
+        for (auto& v: image_grad) {
+            v.resize(image.front().size());
+        }
+
+        for (int i = 0; i < image_grad.size(); ++i) {
+            for (int j = 0; j < image_grad[i].size(); ++j) {
+                double sum = 0;
+                for (int m = i; m < grad.size() && m-i < filter.size(); ++m) {
+                    for (int n = j; n < grad[m].size() && n-j < filter[m-i].size(); ++n) {
+                        sum += grad[m][n] * filter[m-i][n-j];
+                    }
+                }
+                image_grad[i][j] += sum;
+            }
+        }
+
+        std::vector<std::vector<double>>& filter_grad = get_grad<std::vector<std::vector<double>>>(t->children.at(1));
+        filter_grad.resize(filter.size());
+        for (auto& v: filter_grad) {
+            v.resize(filter.front().size());
+        }
+
+        for (int i = 0; i < filter_grad.size(); ++i) {
+            for (int j = 0; j < filter_grad[i].size(); ++j) {
+                double sum = 0;
+                for (int m = i; m < grad.size() && m-i < image.size(); ++m) {
+                    for (int n = j; n < grad[m].size() && n-j < image[m-i].size(); ++n) {
+                        sum += grad[m][n] * image[m-i][n-j];
+                    }
+                }
+                filter_grad[i][j] += sum;
+            }
+        }
+    }
+
+    std::shared_ptr<op> linearize(std::shared_ptr<op> t)
+    {
+        std::shared_ptr<op> result { new op };
+
+        result->children.emplace_back(t);
+
+        result->name = "linearize";
+
+        return result;
+    }
+
+    void linearize_eval(std::shared_ptr<op> t)
+    {
+        if (t->output == nullptr) {
+            t->output = std::make_shared<std::vector<double>>(std::vector<double>());
+        }
+
+        auto& A = get_output<std::vector<std::vector<double>>>(t->children.at(0));
+        auto& result = get_output<std::vector<double>>(t);
+
+        assert(A.size() > 0);
+
+        result.resize(A.size() * A.front().size());
+
+        for (int i = 0; i < A.size(); ++i) {
+            for (int j = 0; j < A.front().size(); ++j) {
+                result[i * A.front().size() + j] = A[i][j];
+            }
+        }
+    }
+
+    void linearize_grad(std::shared_ptr<op> t)
+    {
+        if (t->children.at(0)->grad == nullptr) {
+            t->children.at(0)->grad = std::make_shared<std::vector<std::vector<double>>>(
+                std::vector<std::vector<double>>());
+        }
+
+        auto& grad = get_grad<std::vector<double>>(t);
+        auto& A = get_output<std::vector<std::vector<double>>>(t->children.at(0));
+        auto& A_grad = get_grad<std::vector<std::vector<double>>>(t->children.at(0));
+
+        assert(A.size() > 0);
+        assert(A.size() * A.front().size() == grad.size());
+
+        A_grad.resize(A.size());
+        for (auto& v: A_grad) {
+            v.resize(A.front().size());
+        }
+
+        for (int i = 0; i < A_grad.size(); ++i) {
+            for (int j = 0; j < A_grad[i].size(); ++j) {
+                A_grad[i][j] += grad[i * A.front().size() + j];
+            }
+        }
+    }
+
     void clear_output(std::shared_ptr<op> root)
     {
         std::vector<std::shared_ptr<op>> stack { root };
@@ -455,6 +665,12 @@ namespace autodiff {
         }
     }
 
+    void eval_vertex(std::shared_ptr<op> t,
+        std::unordered_map<std::string, std::function<void(std::shared_ptr<op>)>> funcs)
+    {
+        funcs.at(t->name)(t);
+    }
+
     void eval(std::shared_ptr<op> root,
         std::unordered_map<std::string, std::function<void(std::shared_ptr<op>)>> funcs)
     {
@@ -465,7 +681,6 @@ namespace autodiff {
             std::shared_ptr<op> t = stack.back();
 
             // std::cout << "t: " << t->name << " (" << t.get() << ")" << std::endl;
-            // std::cout << "parent of t: " << t->parent << std::endl;
 
             // std::cout << "path: ";
             // for (auto& c: path) {
