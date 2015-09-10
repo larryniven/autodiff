@@ -574,6 +574,72 @@ namespace autodiff {
         }
     }
 
+    std::shared_ptr<op> dot(std::shared_ptr<op> t1, std::shared_ptr<op> t2)
+    {
+        std::shared_ptr<op> result { new op };
+    
+        result->children.emplace_back(t1);
+        result->children.emplace_back(t2);
+    
+        result->name = "dot";
+    
+        return result;
+    }
+
+    void dot_eval(std::shared_ptr<op> t)
+    {
+        if (t->output == nullptr) {
+            t->output = std::make_shared<double>(0.0);
+        }
+
+        auto& v = get_output<std::vector<double>>(t->children[0]);
+        auto& u = get_output<std::vector<double>>(t->children[1]);
+
+        assert(v.size() == u.size());
+
+        double sum = 0;
+
+        for (int i = 0; i < v.size(); ++i) {
+            sum += v[i] * u[i];
+        }
+
+        t->output = std::make_shared<double>(sum);
+    }
+
+    void dot_grad(std::shared_ptr<op> t)
+    {
+        auto& v = get_output<std::vector<double>>(t->children[0]);
+        auto& u = get_output<std::vector<double>>(t->children[1]);
+
+        assert(v.size() == u.size());
+
+        double grad = get_grad<double>(t);
+
+        if (t->children[0]->grad == nullptr) {
+            std::vector<double> g;
+            g.resize(v.size());
+            t->children[0]->grad = std::make_shared<std::vector<double>>(g);
+        }
+
+        auto& v_grad = get_grad<std::vector<double>>(t->children[0]);
+
+        for (int i = 0; i < v_grad.size(); ++i) {
+            v_grad[i] += grad * u[i];
+        }
+
+        if (t->children[1]->grad == nullptr) {
+            std::vector<double> g;
+            g.resize(u.size());
+            t->children[1]->grad = std::make_shared<std::vector<double>>(g);
+        }
+
+        auto& u_grad = get_grad<std::vector<double>>(t->children[1]);
+
+        for (int i = 0; i < u_grad.size(); ++i) {
+            u_grad[i] += grad * v[i];
+        }
+    }
+
     std::shared_ptr<op> linearize(std::shared_ptr<op> t)
     {
         std::shared_ptr<op> result { new op };

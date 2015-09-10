@@ -72,6 +72,10 @@ namespace autodiff {
     void conv_eval(std::shared_ptr<op> t);
     void conv_grad(std::shared_ptr<op> t);
 
+    std::shared_ptr<op> dot(std::shared_ptr<op> t1, std::shared_ptr<op> t2);
+    void dot_eval(std::shared_ptr<op> t);
+    void dot_grad(std::shared_ptr<op> t);
+
     std::shared_ptr<op> linearize(std::shared_ptr<op> t);
     void linearize_eval(std::shared_ptr<op> t);
     void linearize_grad(std::shared_ptr<op> t);
@@ -110,6 +114,7 @@ namespace autodiff {
         { "logsoftmax", logsoftmax_eval },
         { "transpose", transpose_eval },
         { "conv", conv_eval },
+        { "dot", dot_eval },
         { "linearize", linearize_eval },
         { "logistic2d", logistic2d_eval }
     };
@@ -124,6 +129,7 @@ namespace autodiff {
         { "logsoftmax", logsoftmax_grad },
         { "transpose", transpose_grad },
         { "conv", conv_grad },
+        { "dot", dot_grad },
         { "linearize", linearize_grad },
         { "logistic2d", logistic2d_grad }
     };
