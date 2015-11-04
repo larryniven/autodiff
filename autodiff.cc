@@ -6,7 +6,7 @@
 namespace autodiff {
 
     op::op()
-        : output(nullptr), grad(nullptr)
+        : output(nullptr), grad(nullptr), memory(nullptr)
     {}
 
     std::shared_ptr<op> var()
@@ -125,6 +125,7 @@ namespace autodiff {
 
     void logistic_grad(std::shared_ptr<op> t)
     {
+        auto& grad = get_grad<std::vector<double>>(t);
         auto& output = get_output<std::vector<double>>(t);
 
         if (t->children.at(0)->grad == nullptr) {
@@ -135,7 +136,7 @@ namespace autodiff {
         result.resize(output.size());
 
         for (int i = 0; i < output.size(); ++i) {
-            result[i] += output[i] * (1 - output[i]);
+            result[i] += grad[i] * output[i] * (1 - output[i]);
         }
     }
 
@@ -746,7 +747,7 @@ namespace autodiff {
         while (stack.size() != 0) {
             std::shared_ptr<op> t = stack.back();
 
-            // std::cout << "t: " << t->name << " (" << t.get() << ")" << std::endl;
+            // std::cout << "t: " << t->name << std::endl;
 
             // std::cout << "path: ";
             // for (auto& c: path) {

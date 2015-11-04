@@ -15,6 +15,8 @@ namespace autodiff {
 
         std::shared_ptr<void> output;
         std::shared_ptr<void> grad;
+
+        std::shared_ptr<void> memory;
     
         std::string name;
     };
@@ -102,6 +104,12 @@ namespace autodiff {
     T& get_grad(std::shared_ptr<op> t)
     {
         return *static_cast<T*>(t->grad.get());
+    }
+
+    template <class T>
+    T& get_memory(std::shared_ptr<op> t)
+    {
+        return *static_cast<T*>(t->memory.get());
     }
 
     static std::unordered_map<std::string, std::function<void(std::shared_ptr<op>)>> eval_funcs {
