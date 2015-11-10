@@ -45,13 +45,13 @@ namespace autodiff {
     void logistic_eval(std::shared_ptr<op> t);
     void logistic_grad(std::shared_ptr<op> t);
 
-    std::shared_ptr<op> logistic2d(std::shared_ptr<op> input);
-    void logistic2d_eval(std::shared_ptr<op> t);
-    void logistic2d_grad(std::shared_ptr<op> t);
-
     std::shared_ptr<op> relu(std::shared_ptr<op> input);
     void relu_eval(std::shared_ptr<op> t);
     void relu_grad(std::shared_ptr<op> t);
+
+    std::shared_ptr<op> tanh(std::shared_ptr<op> input);
+    void tanh_eval(std::shared_ptr<op> t);
+    void tanh_grad(std::shared_ptr<op> t);
 
     std::shared_ptr<op> add(std::vector<std::shared_ptr<op>> t);
     std::shared_ptr<op> add(std::shared_ptr<op> t1, std::shared_ptr<op> t2);
@@ -116,6 +116,7 @@ namespace autodiff {
         { "mult", mult_eval },
         { "logistic", logistic_eval },
         { "relu", relu_eval },
+        { "tanh", tanh_eval },
         { "var", var_eval },
         { "add", add_eval },
         { "softmax", softmax_eval },
@@ -123,14 +124,14 @@ namespace autodiff {
         { "transpose", transpose_eval },
         { "conv", conv_eval },
         { "dot", dot_eval },
-        { "linearize", linearize_eval },
-        { "logistic2d", logistic2d_eval }
+        { "linearize", linearize_eval }
     };
 
     static std::unordered_map<std::string, std::function<void(std::shared_ptr<op>)>> grad_funcs {
         { "mult", mult_grad },
         { "logistic", logistic_grad },
         { "relu", relu_grad },
+        { "tanh", tanh_grad },
         { "var", var_grad },
         { "add", add_grad },
         { "softmax", softmax_grad },
@@ -138,8 +139,7 @@ namespace autodiff {
         { "transpose", transpose_grad },
         { "conv", conv_grad },
         { "dot", dot_grad },
-        { "linearize", linearize_grad },
-        { "logistic2d", logistic2d_grad }
+        { "linearize", linearize_grad }
     };
 
 }

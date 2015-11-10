@@ -140,64 +140,6 @@ namespace autodiff {
         }
     }
 
-    std::shared_ptr<op> logistic2d(std::shared_ptr<op> input)
-    {
-        std::shared_ptr<op> result { new op };
-
-        result->children.emplace_back(input);
-    
-        result->name = "logistic2d";
-    
-        return result;
-    }
-
-    void logistic2d_eval(std::shared_ptr<op> t)
-    {
-        auto& A = get_output<std::vector<std::vector<double>>>(t->children.at(0));
-
-        assert(A.size() > 0);
-
-        if (t->output == nullptr) {
-            std::vector<std::vector<double>> result;
-            result.resize(A.size());
-            for (auto& v: result) {
-                v.resize(A.front().size());
-            }
-            t->output = std::make_shared<std::vector<std::vector<double>>>(std::move(result));
-        }
-
-        std::vector<std::vector<double>>& result = get_output<std::vector<std::vector<double>>>(t);
-
-        for (int i = 0; i < result.size(); ++i) {
-            for (int j = 0; j < result[i].size(); ++j) {
-                result[i][j] = 1.0 / (1.0 + std::exp(-A[i][j]));
-            }
-        }
-
-    }
-
-    void logistic2d_grad(std::shared_ptr<op> t)
-    {
-        auto& output = get_output<std::vector<std::vector<double>>>(t);
-
-        if (t->children.at(0)->grad == nullptr) {
-            t->children.at(0)->grad = std::make_shared<std::vector<std::vector<double>>>(
-                std::vector<std::vector<double>>());
-        }
-
-        std::vector<std::vector<double>>& result = get_grad<std::vector<std::vector<double>>>(t->children.at(0));
-        result.resize(output.size());
-        for (auto& v: result) {
-            v.resize(output.front().size());
-        }
-
-        for (int i = 0; i < result.size(); ++i) {
-            for (int j = 0; j < result[i].size(); ++j) {
-                result[i][j] += output[i][j] * (1 - output[i][j]);
-            }
-        }
-    }
-
     std::shared_ptr<op> relu(std::shared_ptr<op> input)
     {
         std::shared_ptr<op> result { new op };
@@ -243,6 +185,54 @@ namespace autodiff {
         }
     }
 
+    std::shared_ptr<op> tanh(std::shared_ptr<op> input)
+    {
+        std::shared_ptr<op> result { new op };
+
+        result->children.emplace_back(input);
+    
+        result->name = "tanh";
+    
+        return result;
+    }
+
+    void tanh_eval(std::shared_ptr<op> t)
+    {
+        auto& v = get_output<std::vector<double>>(t->children.at(0));
+
+        if (t->output == nullptr) {
+            std::vector<double> result;
+            result.resize(v.size());
+            t->output = std::make_shared<std::vector<double>>(std::move(result));
+        }
+
+        std::vector<double>& result = get_output<std::vector<double>>(t);
+
+        for (int i = 0; i < v.size(); ++i) {
+            double z1 = std::exp(v[i]);
+            double z2 = std::exp(-v[i]);
+            result[i] = (z1 - z2) / (z1 + z2);
+        }
+
+    }
+
+    void tanh_grad(std::shared_ptr<op> t)
+    {
+        auto& grad = get_grad<std::vector<double>>(t);
+        auto& output = get_output<std::vector<double>>(t);
+
+        if (t->children.at(0)->grad == nullptr) {
+            t->children.at(0)->grad = std::make_shared<std::vector<double>>(std::vector<double>());
+        }
+
+        std::vector<double>& result = get_grad<std::vector<double>>(t->children.at(0));
+        result.resize(output.size());
+
+        for (int i = 0; i < output.size(); ++i) {
+            result[i] += grad[i] * (1 - output[i] * output[i]);
+        }
+    }
+
     std::shared_ptr<op> add(std::vector<std::shared_ptr<op>> ts)
     {
         std::shared_ptr<op> result { new op };
@@ -276,8 +266,13 @@ namespace autodiff {
         }
 #endif
 
-        std::vector<double> result;
-        result.resize(get_output<std::vector<double>>(t->children.front()).size());
+        if (t->output == nullptr) {
+            std::vector<double> result;
+            result.resize(get_output<std::vector<double>>(t->children.front()).size());
+            t->output = std::make_shared<std::vector<double>>(std::move(result));
+        }
+
+        std::vector<double>& result = get_output<std::vector<double>>(t);
 
         for (auto& c: t->children) {
             auto& u = get_output<std::vector<double>>(c);
@@ -287,7 +282,6 @@ namespace autodiff {
             }
         }
 
-        t->output = std::make_shared<std::vector<double>>(std::move(result));
     }
 
     void add_grad(std::shared_ptr<op> t)
