@@ -4,14 +4,17 @@
 #include <memory>
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 #include <cmath>
 
 namespace autodiff {
 
+    struct computation_graph;
+
     struct op {
         op();
 
-        std::vector<std::shared_ptr<op>> children;
+        int id;
 
         std::shared_ptr<void> output;
         std::shared_ptr<void> grad;
@@ -19,21 +22,38 @@ namespace autodiff {
         std::shared_ptr<void> memory;
     
         std::string name;
+
+        computation_graph *graph;
     };
-    
-    template <class T>
-    std::shared_ptr<op> var(T&& t)
-    {
-        std::shared_ptr<op> result { new op };
 
-        result->output = std::make_shared<typename std::decay<T>::type>(std::forward<T>(t));
+    struct computation_graph {
+        std::vector<std::shared_ptr<op>> vertices; 
+        std::vector<std::vector<int>> adj;
 
-        result->name = "var";
+        computation_graph();
+        computation_graph(computation_graph const& graph);
 
-        return result;
-    }
+        computation_graph& operator=(computation_graph const& other);
 
-    std::shared_ptr<op> var();
+        template <class T>
+        std::shared_ptr<op> var(T&& t)
+        {
+            std::shared_ptr<op> result = make_node("var");
+
+            result->output = std::make_shared<typename std::decay<T>::type>(std::forward<T>(t));
+
+            return result;
+        }
+
+        std::shared_ptr<op> var();
+
+        std::shared_ptr<op> make_node(std::string name);
+
+        void add_edge(std::shared_ptr<op> const& tail, std::shared_ptr<op> const& head);
+    };
+
+    std::shared_ptr<op> get_child(std::shared_ptr<op> const& t, int index);
+
     inline void var_eval(std::shared_ptr<op> t) {};
     inline void var_grad(std::shared_ptr<op> t) {};
 
@@ -82,17 +102,25 @@ namespace autodiff {
     void linearize_eval(std::shared_ptr<op> t);
     void linearize_grad(std::shared_ptr<op> t);
 
-    void clear_output(std::shared_ptr<op> root);
-    void clear_grad(std::shared_ptr<op> root);
+    std::vector<std::shared_ptr<op>> topo_order(std::shared_ptr<op> const& root);
 
-    void eval_vertex(std::shared_ptr<op> t,
-        std::unordered_map<std::string, std::function<void(std::shared_ptr<op>)>> funcs);
+    void eval_vertex(std::shared_ptr<op> const& t,
+        std::unordered_map<std::string, std::function<void(std::shared_ptr<op>)>> const& funcs);
 
-    void eval(std::shared_ptr<op> root,
-        std::unordered_map<std::string, std::function<void(std::shared_ptr<op>)>> funcs);
+    void eval(std::vector<std::shared_ptr<op>> const& topo_order,
+        std::unordered_map<std::string, std::function<void(std::shared_ptr<op>)>> const& funcs);
 
-    void grad(std::shared_ptr<op> root,
-        std::unordered_map<std::string, std::function<void(std::shared_ptr<op>)>> funcs);
+    void eval(std::shared_ptr<op> const& root,
+        std::unordered_map<std::string, std::function<void(std::shared_ptr<op>)>> const& funcs);
+
+    void grad(std::vector<std::shared_ptr<op>> const& topo_order,
+        std::unordered_map<std::string, std::function<void(std::shared_ptr<op>)>> const& funcs);
+
+    void grad(std::shared_ptr<op> const& root,
+        std::unordered_map<std::string, std::function<void(std::shared_ptr<op>)>> const& funcs);
+
+    void clear_grad(std::vector<std::shared_ptr<op>> const& topo_order);
+    void clear_grad(std::shared_ptr<op> const& root);
 
     template <class T>
     T& get_output(std::shared_ptr<op> t)
