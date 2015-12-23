@@ -1,15 +1,26 @@
 CXXFLAGS += -std=c++11 -I ../
 AR = gcc-ar
 
-.PHONY: all clean
+.PHONY: all clean gpu
 
 all: libautodiff.a
 
+gpu: libautodiffgpu.a
+
 clean:
 	-rm *.o
-	-rm libautodiff.a
+	-rm libautodiff.a libautodiffgpu.a
 
-libautodiff.a: autodiff.o
+libautodiff.a: autodiff.o autodiff-op.o
 	$(AR) rcs $@ $^
 
+libautodiffgpu.a: autodiff.o autodiff-op-gpu.o
+	$(AR) rcs $@ $^
+
+autodiff-op-gpu.o: autodiff-op-gpu.cu
+	nvcc $(CXXFLAGS) -c autodiff-op-gpu.cu
+
 autodiff.o: autodiff.h
+autodiff-op.o: autodiff-op.h
+autodiff-op-gpu.o: autodiff-op-gpu.h
+
