@@ -22,7 +22,7 @@ namespace autodiff {
             la::matrix<double> const& a,
             la::vector<double> const& x)
         {
-            result.resize(a.rows());
+            result.resize(a.cols());
             cblas_dgemv(CblasRowMajor, CblasTrans, a.rows(), a.cols(), 1, a.data(), a.cols(),
                 x.data(), 1, 1, result.data(), 1);
         }
