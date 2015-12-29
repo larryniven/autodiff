@@ -14,13 +14,17 @@ clean:
 libautodiff.a: autodiff.o autodiff-op.o
 	$(AR) rcs $@ $^
 
-libautodiffgpu.a: autodiff.o autodiff-op-gpu.o
+libautodiffgpu.a: autodiff.o autodiff-gpu.o autodiff-op-gpu.o
 	$(AR) rcs $@ $^
+
+autodiff-gpu.o: autodiff-gpu.cu
+	nvcc $(CXXFLAGS) -c autodiff-gpu.cu
 
 autodiff-op-gpu.o: autodiff-op-gpu.cu
 	nvcc $(CXXFLAGS) -c autodiff-op-gpu.cu
 
 autodiff.o: autodiff.h
 autodiff-op.o: autodiff-op.h
+autodiff-gpu.o: autodiff-gpu.h
 autodiff-op-gpu.o: autodiff-op-gpu.h
 

@@ -86,21 +86,9 @@ namespace autodiff {
     void logsoftmax_eval(std::shared_ptr<op_t> t);
     void logsoftmax_grad(std::shared_ptr<op_t> t);
 
-    std::shared_ptr<op_t> transpose(std::shared_ptr<op_t> t);
-    void transpose_eval(std::shared_ptr<op_t> t);
-    void transpose_grad(std::shared_ptr<op_t> t);
-
-    std::shared_ptr<op_t> conv(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2);
-    void conv_eval(std::shared_ptr<op_t> t);
-    void conv_grad(std::shared_ptr<op_t> t);
-
     std::shared_ptr<op_t> dot(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2);
     void dot_eval(std::shared_ptr<op_t> t);
     void dot_grad(std::shared_ptr<op_t> t);
-
-    std::shared_ptr<op_t> linearize(std::shared_ptr<op_t> t);
-    void linearize_eval(std::shared_ptr<op_t> t);
-    void linearize_grad(std::shared_ptr<op_t> t);
 
     std::vector<std::shared_ptr<op_t>> topo_order(std::shared_ptr<op_t> const& root);
 
