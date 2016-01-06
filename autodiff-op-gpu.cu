@@ -4,6 +4,7 @@
 #include <thrust/iterator/zip_iterator.h>
 #include <thrust/device_ptr.h>
 #include <thrust/reduce.h>
+#include <cuda_runtime.h>
 
 namespace autodiff {
 
@@ -37,7 +38,7 @@ namespace autodiff {
                 __host__ __device__
                 void operator()(T t) const
                 {
-                    thrust::get<0>(t) = 1 / (1 + std::exp(-thrust::get<1>(t)));
+                    thrust::get<0>(t) = 1 / (1 + exp(-thrust::get<1>(t)));
                 }
             };
 
@@ -48,9 +49,11 @@ namespace autodiff {
 
                 thrust::for_each(
                     thrust::make_zip_iterator(thrust::make_tuple(
-                        thrust::device_ptr<double>(result.begin()), thrust::device_ptr<double const>(v.begin()))),
+                        thrust::device_ptr<double>(result.begin()),
+                        thrust::device_ptr<double const>(v.begin()))),
                     thrust::make_zip_iterator(thrust::make_tuple(
-                        thrust::device_ptr<double>(result.end()), thrust::device_ptr<double const>(v.end()))),
+                        thrust::device_ptr<double>(result.end()),
+                        thrust::device_ptr<double const>(v.end()))),
                     ilogistic_op());
 
                 return result;
@@ -105,9 +108,11 @@ namespace autodiff {
 
                 thrust::for_each(
                     thrust::make_zip_iterator(thrust::make_tuple(
-                        thrust::device_ptr<double>(result.begin()), thrust::device_ptr<double const>(v.begin()))),
+                        thrust::device_ptr<double>(result.begin()),
+                        thrust::device_ptr<double const>(v.begin()))),
                     thrust::make_zip_iterator(thrust::make_tuple(
-                        thrust::device_ptr<double>(result.end()), thrust::device_ptr<double const>(v.end()))),
+                        thrust::device_ptr<double>(result.end()),
+                        thrust::device_ptr<double const>(v.end()))),
                     relu_op());
 
                 return result;
@@ -154,8 +159,8 @@ namespace autodiff {
                     auto& result = thrust::get<0>(t);
                     auto& v = thrust::get<1>(t);
 
-                    double z1 = std::exp(v);
-                    double z2 = std::exp(-v);
+                    double z1 = exp(v);
+                    double z2 = exp(-v);
                     result = (z1 - z2) / (z1 + z2);
                 }
             };
@@ -167,9 +172,11 @@ namespace autodiff {
 
                 thrust::for_each(
                     thrust::make_zip_iterator(thrust::make_tuple(
-                        thrust::device_ptr<double>(result.begin()), thrust::device_ptr<double const>(v.begin()))),
+                        thrust::device_ptr<double>(result.begin()),
+                        thrust::device_ptr<double const>(v.begin()))),
                     thrust::make_zip_iterator(thrust::make_tuple(
-                        thrust::device_ptr<double>(result.end()), thrust::device_ptr<double const>(v.end()))),
+                        thrust::device_ptr<double>(result.end()),
+                        thrust::device_ptr<double const>(v.end()))),
                     tanh_op());
 
                 return result;
@@ -213,9 +220,9 @@ namespace autodiff {
                 double operator()(double a, double b) const
                 {
                     if (a > b) {
-                        return b + std::log(1 + std::exp(b - a));
+                        return a + log(1 + exp(b - a));
                     } else {
-                        return a + std::log(1 + std::exp(a - b));
+                        return b + log(1 + exp(a - b));
                     }
                 }
             };
@@ -226,7 +233,7 @@ namespace autodiff {
                 __host__ __device__
                 void operator()(double& x) const
                 {
-                    x = std::exp(x - s);
+                    x = exp(x - s);
                 }
 
             };
@@ -300,8 +307,7 @@ namespace autodiff {
 
             la::gpu::vector<double> logsoftmax(la::gpu::vector<double> const& v)
             {
-                la::gpu::vector<double> result;
-                result.resize(v.size());
+                la::gpu::vector<double> result { v };
 
                 double inf = std::numeric_limits<double>::infinity();
 
@@ -327,7 +333,7 @@ namespace autodiff {
                     auto& grad = thrust::get<1>(t);
                     auto& output = thrust::get<2>(t);
 
-                    result += grad - std::exp(output) * mu;
+                    result += grad - exp(output) * mu;
                 }
 
             };

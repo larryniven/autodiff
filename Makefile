@@ -14,7 +14,7 @@ clean:
 libautodiff.a: autodiff.o autodiff-op.o
 	$(AR) rcs $@ $^
 
-libautodiffgpu.a: autodiff.o autodiff-gpu.o autodiff-op-gpu.o
+libautodiffgpu.a: autodiff.o autodiff-op.o autodiff-gpu.o autodiff-op-gpu.o
 	$(AR) rcs $@ $^
 
 autodiff-gpu.o: autodiff-gpu.cu
