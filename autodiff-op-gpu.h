@@ -13,35 +13,40 @@ namespace autodiff {
                 la::gpu::vector<double> const& x,
                 la::gpu::vector<double> const& y);
 
-            void ilmult(la::gpu::vector<double>& result,
+            void ilmul(la::gpu::vector<double>& result,
                 la::gpu::matrix<double> const& a,
                 la::gpu::vector<double> const& x);
 
-            la::gpu::vector<double> logistic(la::gpu::vector<double> const& v);
+            void logistic(la::gpu::vector<double>& u,
+                la::gpu::vector<double> const& v);
 
             void ilogistic_grad(la::gpu::vector<double>& result,
                 la::gpu::vector<double> const& grad,
                 la::gpu::vector<double> const& output);
 
-            la::gpu::vector<double> relu(la::gpu::vector<double> const& v);
+            void relu(la::gpu::vector<double>& u,
+                la::gpu::vector<double> const& v);
 
             void irelu_grad(la::gpu::vector<double>& result,
                 la::gpu::vector<double> const& grad,
                 la::gpu::vector<double> const& output);
 
-            la::gpu::vector<double> tanh(la::gpu::vector<double> const& v);
+            void tanh(la::gpu::vector<double>& u,
+                la::gpu::vector<double> const& v);
 
             void itanh_grad(la::gpu::vector<double>& result,
                 la::gpu::vector<double> const& grad,
                 la::gpu::vector<double> const& output);
 
-            la::gpu::vector<double> softmax(la::gpu::vector<double> const& v);
+            void softmax(la::gpu::vector<double>& u,
+                la::gpu::vector<double> const& v);
 
             void isoftmax_grad(la::gpu::vector<double>& result,
                 la::gpu::vector<double> const& grad,
                 la::gpu::vector<double> const& output);
 
-            la::gpu::vector<double> logsoftmax(la::gpu::vector<double> const& v);
+            void logsoftmax(la::gpu::vector<double>& u,
+                la::gpu::vector<double> const& v);
 
             void ilogsoftmax_grad(la::gpu::vector<double>& result,
                 la::gpu::vector<double> const& grad,

@@ -18,25 +18,35 @@ namespace autodiff {
                 result.data(), y.size());
         }
 
-        void ilmult(la::vector<double>& result,
+        void ilmul(la::vector<double>& result,
             la::matrix<double> const& a,
             la::vector<double> const& x)
         {
+            assert(a.rows() == x.size());
+
             result.resize(a.cols());
             cblas_dgemv(CblasRowMajor, CblasTrans, a.rows(), a.cols(), 1, a.data(), a.cols(),
                 x.data(), 1, 1, result.data(), 1);
         }
 
-        la::vector<double> logistic(la::vector<double> const& v)
+        void iemul_grad(la::vector<double>& result,
+            la::vector<double> const& grad,
+            la::vector<double> const& v)
         {
-            la::vector<double> result;
-            result.resize(v.size());
+            assert(grad.size() == v.size());
+
+            result.resize(grad.size());
+            cblas_dgbmv(CblasRowMajor, CblasNoTrans, grad.size(), grad.size(), 0, 0,
+                1.0, grad.data(), 1, v.data(), 1, 1.0, result.data(), 1);
+        }
+
+        void logistic(la::vector<double>& u, la::vector<double> const& v)
+        {
+            assert(u.size() == v.size());
 
             for (int i = 0; i < v.size(); ++i) {
-                result(i) = 1 / (1 + std::exp(-v(i)));
+                u(i) = 1 / (1 + std::exp(-v(i)));
             }
-
-            return result;
         }
 
         void ilogistic_grad(la::vector<double>& result,
@@ -52,16 +62,13 @@ namespace autodiff {
             }
         }
 
-        la::vector<double> relu(la::vector<double> const& v)
+        void relu(la::vector<double>& u, la::vector<double> const& v)
         {
-            la::vector<double> result;
-            result.resize(v.size());
+            assert(u.size() == v.size());
 
             for (int i = 0; i < v.size(); ++i) {
-                result(i) = std::max(0.0, v(i));
+                u(i) = std::max(0.0, v(i));
             }
-
-            return result;
         }
 
         void irelu_grad(la::vector<double>& result,
@@ -77,18 +84,19 @@ namespace autodiff {
             }
         }
 
-        la::vector<double> tanh(la::vector<double> const& v)
+        void tanh(la::vector<double>& u, la::vector<double> const& v)
         {
-            la::vector<double> result;
-            result.resize(v.size());
+            assert(u.size() == v.size());
 
             for (int i = 0; i < v.size(); ++i) {
-                double z1 = std::exp(v(i));
-                double z2 = std::exp(-v(i));
-                result(i) = (z1 - z2) / (z1 + z2);
+                if (v(i) > 0) {
+                    double z = std::exp(-2 * v(i));
+                    u(i) = (1 - z) / (1 + z);
+                } else {
+                    double z = std::exp(2 * v(i));
+                    u(i) = (z - 1) / (z + 1);
+                }
             }
-
-            return result;
         }
 
         void itanh_grad(la::vector<double>& result,
@@ -104,10 +112,9 @@ namespace autodiff {
             }
         }
 
-        la::vector<double> softmax(la::vector<double> const& v)
+        void softmax(la::vector<double>& u, la::vector<double> const& v)
         {
-            la::vector<double> result;
-            result.resize(v.size());
+            assert(u.size() == v.size());
 
             double logZ = -std::numeric_limits<double>::infinity();
             for (int j = 0; j < v.size(); ++j) {
@@ -115,10 +122,8 @@ namespace autodiff {
             }
 
             for (int i = 0; i < v.size(); ++i) {
-                result(i) = std::exp(v(i) - logZ);
+                u(i) = std::exp(v(i) - logZ);
             }
-
-            return result;
         }
 
         void isoftmax_grad(la::vector<double>& result,
@@ -136,10 +141,9 @@ namespace autodiff {
             }
         }
 
-        la::vector<double> logsoftmax(la::vector<double> const& v)
+        void logsoftmax(la::vector<double>& u, la::vector<double> const& v)
         {
-            la::vector<double> result;
-            result.resize(v.size());
+            assert(u.size() == v.size());
 
             double logZ = -std::numeric_limits<double>::infinity();
 
@@ -148,10 +152,8 @@ namespace autodiff {
             }
 
             for (int i = 0; i < v.size(); ++i) {
-                result(i) = v(i) - logZ;
+                u(i) = v(i) - logZ;
             }
-
-            return result;
         }
 
         void ilogsoftmax_grad(la::vector<double>& result,

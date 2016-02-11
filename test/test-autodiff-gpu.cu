@@ -16,7 +16,7 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
         ebt::assert_equals(14, autodiff::get_output<double>(output));
     }},
 
-    {"test-mult", []() {
+    {"test-mul", []() {
         la::matrix<double> ha {{1, 2, 3}, {4, 5, 6}, {7, 8, 9}};
         la::gpu::matrix<double> da { ha };
 
@@ -24,7 +24,7 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
         la::gpu::vector<double> db { hb };
 
         autodiff::computation_graph g;
-        auto output = autodiff::mult(g.var(da), g.var(db));
+        auto output = autodiff::mul(g.var(da), g.var(db));
 
         autodiff::eval(output, autodiff::gpu::eval_funcs);
 

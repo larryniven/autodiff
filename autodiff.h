@@ -57,9 +57,13 @@ namespace autodiff {
     inline void var_eval(std::shared_ptr<op_t> t) {};
     inline void var_grad(std::shared_ptr<op_t> t) {};
 
-    std::shared_ptr<op_t> mult(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2);
-    void mult_eval(std::shared_ptr<op_t> t);
-    void mult_grad(std::shared_ptr<op_t> t);
+    std::shared_ptr<op_t> mul(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2);
+    void mul_eval(std::shared_ptr<op_t> t);
+    void mul_grad(std::shared_ptr<op_t> t);
+
+    std::shared_ptr<op_t> emul(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2);
+    void emul_eval(std::shared_ptr<op_t> t);
+    void emul_grad(std::shared_ptr<op_t> t);
 
     std::shared_ptr<op_t> logistic(std::shared_ptr<op_t> input);
     void logistic_eval(std::shared_ptr<op_t> t);
@@ -90,6 +94,7 @@ namespace autodiff {
     void dot_eval(std::shared_ptr<op_t> t);
     void dot_grad(std::shared_ptr<op_t> t);
 
+    std::vector<std::shared_ptr<op_t>> topo_order(std::vector<std::shared_ptr<op_t>> const& roots);
     std::vector<std::shared_ptr<op_t>> topo_order(std::shared_ptr<op_t> const& root);
 
     void eval_vertex(std::shared_ptr<op_t> const& t,
@@ -129,7 +134,8 @@ namespace autodiff {
     }
 
     static std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> eval_funcs {
-        { "mult", mult_eval },
+        { "mul", mul_eval },
+        { "emul", emul_eval },
         { "logistic", logistic_eval },
         { "relu", relu_eval },
         { "tanh", tanh_eval },
@@ -141,7 +147,8 @@ namespace autodiff {
     };
 
     static std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> grad_funcs {
-        { "mult", mult_grad },
+        { "mul", mul_grad },
+        { "emul", emul_grad },
         { "logistic", logistic_grad },
         { "relu", relu_grad },
         { "tanh", tanh_grad },

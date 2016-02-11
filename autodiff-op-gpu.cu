@@ -22,10 +22,12 @@ namespace autodiff {
                     x.data(), 1, y.data(), 1, result.data(), x.size());
             }
 
-            void ilmult(la::gpu::vector<double>& result,
+            void ilmul(la::gpu::vector<double>& result,
                 la::gpu::matrix<double> const& a,
                 la::gpu::vector<double> const& x)
             {
+                assert(a.rows() == x.size());
+
                 result.resize(a.cols());
                 double alpha = 1;
                 double beta = 1;
@@ -42,21 +44,18 @@ namespace autodiff {
                 }
             };
 
-            la::gpu::vector<double> logistic(la::gpu::vector<double> const& v)
+            void logistic(la::gpu::vector<double>& u, la::gpu::vector<double> const& v)
             {
-                la::gpu::vector<double> result;
-                result.resize(v.size());
+                assert(u.size() == v.size());
 
                 thrust::for_each(
                     thrust::make_zip_iterator(thrust::make_tuple(
-                        thrust::device_ptr<double>(result.begin()),
+                        thrust::device_ptr<double>(u.begin()),
                         thrust::device_ptr<double const>(v.begin()))),
                     thrust::make_zip_iterator(thrust::make_tuple(
-                        thrust::device_ptr<double>(result.end()),
+                        thrust::device_ptr<double>(u.end()),
                         thrust::device_ptr<double const>(v.end()))),
                     ilogistic_op());
-
-                return result;
             }
 
             struct ilogistic_grad_op {
@@ -101,21 +100,18 @@ namespace autodiff {
                 }
             };
 
-            la::gpu::vector<double> relu(la::gpu::vector<double> const& v)
+            void relu(la::gpu::vector<double>& u, la::gpu::vector<double> const& v)
             {
-                la::gpu::vector<double> result;
-                result.resize(v.size());
+                assert(u.size() == v.size());
 
                 thrust::for_each(
                     thrust::make_zip_iterator(thrust::make_tuple(
-                        thrust::device_ptr<double>(result.begin()),
+                        thrust::device_ptr<double>(u.begin()),
                         thrust::device_ptr<double const>(v.begin()))),
                     thrust::make_zip_iterator(thrust::make_tuple(
-                        thrust::device_ptr<double>(result.end()),
+                        thrust::device_ptr<double>(u.end()),
                         thrust::device_ptr<double const>(v.end()))),
                     relu_op());
-
-                return result;
             }
 
             struct irelu_grad_op {
@@ -159,27 +155,28 @@ namespace autodiff {
                     auto& result = thrust::get<0>(t);
                     auto& v = thrust::get<1>(t);
 
-                    double z1 = exp(v);
-                    double z2 = exp(-v);
-                    result = (z1 - z2) / (z1 + z2);
+                    if (v > 0) {
+                        double z = std::exp(-2 * v);
+                        result = (1 - z) / (1 + z);
+                    } else {
+                        double z = std::exp(2 * v);
+                        result = (z - 1) / (z + 1);
+                    }
                 }
             };
 
-            la::gpu::vector<double> tanh(la::gpu::vector<double> const& v)
+            void tanh(la::gpu::vector<double>& u, la::gpu::vector<double> const& v)
             {
-                la::gpu::vector<double> result;
-                result.resize(v.size());
+                assert(u.size() == v.size());
 
                 thrust::for_each(
                     thrust::make_zip_iterator(thrust::make_tuple(
-                        thrust::device_ptr<double>(result.begin()),
+                        thrust::device_ptr<double>(u.begin()),
                         thrust::device_ptr<double const>(v.begin()))),
                     thrust::make_zip_iterator(thrust::make_tuple(
-                        thrust::device_ptr<double>(result.end()),
+                        thrust::device_ptr<double>(u.end()),
                         thrust::device_ptr<double const>(v.end()))),
                     tanh_op());
-
-                return result;
             }
 
             struct itanh_grad_op {
@@ -191,7 +188,7 @@ namespace autodiff {
                     auto& grad = thrust::get<1>(t);
                     auto& output = thrust::get<2>(t);
 
-                    result += (output > 0 ? grad : 0);
+                    result += grad * (1 - output * output);
                 }
             };
 
@@ -230,18 +227,19 @@ namespace autodiff {
             struct isoftmax_op {
                 double s;
 
+                template <class T>
                 __host__ __device__
-                void operator()(double& x) const
+                void operator()(T t) const
                 {
-                    x = exp(x - s);
+                    thrust::get<0>(t) = exp(thrust::get<1>(t) - s);
                 }
 
             };
 
-            la::gpu::vector<double> softmax(la::gpu::vector<double> const& v)
+            void softmax(la::gpu::vector<double>& u,
+                la::gpu::vector<double> const& v)
             {
-                la::gpu::vector<double> result;
-                result.resize(v.size());
+                assert(u.size() == v.size());
 
                 double inf = std::numeric_limits<double>::infinity();
 
@@ -249,11 +247,13 @@ namespace autodiff {
                     thrust::device_ptr<double const>(v.end()), -inf, log_add_op());
 
                 thrust::for_each(
-                    thrust::device_ptr<double>(result.begin()),
-                    thrust::device_ptr<double>(result.end()),
+                    thrust::make_zip_iterator(thrust::make_tuple(
+                        thrust::device_ptr<double>(u.begin()),
+                        thrust::device_ptr<double const>(v.begin()))),
+                    thrust::make_zip_iterator(thrust::make_tuple(
+                        thrust::device_ptr<double>(u.end()),
+                        thrust::device_ptr<double const>(v.end()))),
                     isoftmax_op { logZ });
-
-                return result;
             }
 
             struct isoftmax_grad_op {
@@ -297,17 +297,19 @@ namespace autodiff {
             struct ilogsoftmax_op {
                 double s;
 
+                template <class T>
                 __host__ __device__
-                void operator()(double& x) const
+                void operator()(T t) const
                 {
-                    x -= s;
+                    thrust::get<0>(t) = thrust::get<1>(t) -  s;
                 }
 
             };
 
-            la::gpu::vector<double> logsoftmax(la::gpu::vector<double> const& v)
+            void logsoftmax(la::gpu::vector<double>& u,
+                la::gpu::vector<double> const& v)
             {
-                la::gpu::vector<double> result { v };
+                assert(u.size() == v.size());
 
                 double inf = std::numeric_limits<double>::infinity();
 
@@ -315,11 +317,13 @@ namespace autodiff {
                     thrust::device_ptr<double const>(v.end()), -inf, log_add_op());
 
                 thrust::for_each(
-                    thrust::device_ptr<double>(result.begin()),
-                    thrust::device_ptr<double>(result.end()),
+                    thrust::make_zip_iterator(thrust::make_tuple(
+                        thrust::device_ptr<double>(u.begin()),
+                        thrust::device_ptr<double const>(v.begin()))),
+                    thrust::make_zip_iterator(thrust::make_tuple(
+                        thrust::device_ptr<double>(u.end()),
+                        thrust::device_ptr<double const>(v.end()))),
                     ilogsoftmax_op { logZ });
-
-                return result;
             }
 
             struct ilogsoftmax_grad_op {

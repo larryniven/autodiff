@@ -13,7 +13,7 @@ std::vector<std::function<void(void)>> tests {
 
         autodiff::computation_graph g;
 
-        auto t = autodiff::mult(g.var(A), g.var(x));
+        auto t = autodiff::mul(g.var(A), g.var(x));
 
         autodiff::eval(t, autodiff::eval_funcs);
 
@@ -36,7 +36,7 @@ std::vector<std::function<void(void)>> tests {
 
         autodiff::computation_graph g;
 
-        auto t = autodiff::mult(g.var(A), g.var(x));
+        auto t = autodiff::mul(g.var(A), g.var(x));
 
         t->grad = std::make_shared<std::vector<double>>(grad);
 

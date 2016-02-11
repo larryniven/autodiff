@@ -7,8 +7,11 @@ namespace autodiff {
 
     namespace gpu {
 
-        void mult_eval(std::shared_ptr<op_t> t);
-        void mult_grad(std::shared_ptr<op_t> t);
+        void mul_eval(std::shared_ptr<op_t> t);
+        void mul_grad(std::shared_ptr<op_t> t);
+
+        void emul_eval(std::shared_ptr<op_t> t);
+        void emul_grad(std::shared_ptr<op_t> t);
 
         void logistic_eval(std::shared_ptr<op_t> t);
         void logistic_grad(std::shared_ptr<op_t> t);
@@ -32,7 +35,7 @@ namespace autodiff {
         void dot_grad(std::shared_ptr<op_t> t);
 
         static std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> eval_funcs {
-            { "mult", mult_eval },
+            { "mul", mul_eval },
             { "logistic", logistic_eval },
             { "relu", relu_eval },
             { "tanh", tanh_eval },
@@ -44,7 +47,7 @@ namespace autodiff {
         };
 
         static std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> grad_funcs {
-            { "mult", mult_grad },
+            { "mul", mul_grad },
             { "logistic", logistic_grad },
             { "relu", relu_grad },
             { "tanh", tanh_grad },
