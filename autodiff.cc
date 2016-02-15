@@ -81,42 +81,46 @@ namespace autodiff {
     
     void mul_eval(std::shared_ptr<op_t> t)
     {
-        auto& A = get_output<la::matrix<double>>(get_child(t, 0));
-        auto& v = get_output<la::vector<double>>(get_child(t, 1));
+        auto& A = get_output<la::matrix_like<double>>(get_child(t, 0));
+        auto& v = get_output<la::vector_like<double>>(get_child(t, 1));
 
         if (t->output == nullptr) {
             la::vector<double> u;
             u.resize(A.rows());
             t->output = std::make_shared<la::vector<double>>(u);
         } else {
-            auto& u = get_output<la::vector<double>>(t);
+            auto& u = get_output<la::vector_like<double>>(t);
             la::zero(u);
         }
 
-        auto& u = get_output<la::vector<double>>(t);
+        auto& u = get_output<la::vector_like<double>>(t);
         la::mul(u, A, v);
     }
 
     void mul_grad(std::shared_ptr<op_t> t)
     {
-        auto& grad = get_grad<la::vector<double>>(t);
+        auto& grad = get_grad<la::vector_like<double>>(t);
 
         auto A_o = get_child(t, 0);
         auto v_o = get_child(t, 1);
 
-        auto& A = get_output<la::matrix<double>>(A_o);
-        auto& v = get_output<la::vector<double>>(v_o);
+        auto& A = get_output<la::matrix_like<double>>(A_o);
+        auto& v = get_output<la::vector_like<double>>(v_o);
 
         if (A_o->grad == nullptr) {
-            A_o->grad = std::make_shared<la::matrix<double>>(la::matrix<double>());
+            la::matrix<double> g;
+            g.resize(grad.size(), v.size());
+            A_o->grad = std::make_shared<la::matrix<double>>(std::move(g));
         }
 
         if (v_o->grad == nullptr) {
-            v_o->grad = std::make_shared<la::vector<double>>(la::vector<double>());
+            la::vector<double> g;
+            g.resize(A.cols());
+            v_o->grad = std::make_shared<la::vector<double>>(std::move(g));
         }
 
-        auto& A_grad = get_grad<la::matrix<double>>(A_o);
-        auto& v_grad = get_grad<la::vector<double>>(v_o);
+        auto& A_grad = get_grad<la::matrix_like<double>>(A_o);
+        auto& v_grad = get_grad<la::vector_like<double>>(v_o);
 
         op::iouter_prod(A_grad, grad, v);
         op::ilmul(v_grad, A, grad);
@@ -139,44 +143,46 @@ namespace autodiff {
     
     void emul_eval(std::shared_ptr<op_t> t)
     {
-        auto& u = get_output<la::vector<double>>(get_child(t, 0));
-        auto& v = get_output<la::vector<double>>(get_child(t, 1));
+        auto& u = get_output<la::vector_like<double>>(get_child(t, 0));
+        auto& v = get_output<la::vector_like<double>>(get_child(t, 1));
 
         if (t->output == nullptr) {
             la::vector<double> z;
             z.resize(u.size());
             t->output = std::make_shared<la::vector<double>>(z);
         } else {
-            auto& z = get_output<la::vector<double>>(t);
+            auto& z = get_output<la::vector_like<double>>(t);
             la::zero(z);
         }
 
-        auto& z = get_output<la::vector<double>>(t);
+        auto& z = get_output<la::vector_like<double>>(t);
         la::emul(z, u, v);
     }
 
     void emul_grad(std::shared_ptr<op_t> t)
     {
-        auto& grad = get_grad<la::vector<double>>(t);
+        auto& grad = get_grad<la::vector_like<double>>(t);
 
         auto u_o = get_child(t, 0);
         auto v_o = get_child(t, 1);
 
-        auto& u = get_output<la::vector<double>>(u_o);
-        auto& v = get_output<la::vector<double>>(v_o);
+        auto& u = get_output<la::vector_like<double>>(u_o);
+        auto& v = get_output<la::vector_like<double>>(v_o);
 
         if (u_o->grad == nullptr) {
-            u_o->grad = std::make_shared<la::vector<double>>(la::vector<double>());
+            la::vector<double> g;
+            g.resize(u.size());
+            u_o->grad = std::make_shared<la::vector<double>>(std::move(g));
         }
 
         if (v_o->grad == nullptr) {
-            v_o->grad = std::make_shared<la::vector<double>>(la::vector<double>());
+            la::vector<double> g;
+            g.resize(v.size());
+            v_o->grad = std::make_shared<la::vector<double>>(std::move(g));
         }
 
-        auto& u_grad = get_grad<la::vector<double>>(u_o);
-        u_grad.resize(u.size());
-        auto& v_grad = get_grad<la::vector<double>>(v_o);
-        v_grad.resize(v.size());
+        auto& u_grad = get_grad<la::vector_like<double>>(u_o);
+        auto& v_grad = get_grad<la::vector_like<double>>(v_o);
 
         la::emul(u_grad, grad, v);
         la::emul(v_grad, grad, u);
@@ -194,32 +200,34 @@ namespace autodiff {
 
     void logistic_eval(std::shared_ptr<op_t> t)
     {
-        auto& v = get_output<la::vector<double>>(get_child(t, 0));
+        auto& v = get_output<la::vector_like<double>>(get_child(t, 0));
 
         if (t->output == nullptr) {
             la::vector<double> z;
             z.resize(v.size());
             t->output = std::make_shared<la::vector<double>>(z);
         } else {
-            auto& z = get_output<la::vector<double>>(t);
+            auto& z = get_output<la::vector_like<double>>(t);
             la::zero(z);
         }
 
-        auto& z = get_output<la::vector<double>>(t);
-        autodiff::op::logistic(z, v);
+        auto& z = get_output<la::vector_like<double>>(t);
+        op::logistic(z, v);
     }
 
     void logistic_grad(std::shared_ptr<op_t> t)
     {
-        auto& grad = get_grad<la::vector<double>>(t);
-        auto& output = get_output<la::vector<double>>(t);
+        auto& grad = get_grad<la::vector_like<double>>(t);
+        auto& output = get_output<la::vector_like<double>>(t);
 
         auto ch = get_child(t, 0);
         if (ch->grad == nullptr) {
-            ch->grad = std::make_shared<la::vector<double>>(la::vector<double>());
+            la::vector<double> g;
+            g.resize(output.size());
+            ch->grad = std::make_shared<la::vector<double>>(std::move(g));
         }
 
-        auto& result = get_grad<la::vector<double>>(ch);
+        auto& result = get_grad<la::vector_like<double>>(ch);
         op::ilogistic_grad(result, grad, output);
     }
 
@@ -235,7 +243,7 @@ namespace autodiff {
 
     void relu_eval(std::shared_ptr<op_t> t)
     {
-        auto& v = get_output<la::vector<double>>(get_child(t, 0));
+        auto& v = get_output<la::vector_like<double>>(get_child(t, 0));
 
         if (t->output == nullptr) {
             la::vector<double> z;
@@ -246,21 +254,23 @@ namespace autodiff {
             la::zero(z);
         }
 
-        auto& z = get_output<la::vector<double>>(t);
-        autodiff::op::relu(z, v);
+        auto& z = get_output<la::vector_like<double>>(t);
+        op::relu(z, v);
     }
 
     void relu_grad(std::shared_ptr<op_t> t)
     {
-        auto& output = get_output<la::vector<double>>(t);
-        auto& grad = get_grad<la::vector<double>>(t);
+        auto& output = get_output<la::vector_like<double>>(t);
+        auto& grad = get_grad<la::vector_like<double>>(t);
 
         auto ch = get_child(t, 0);
         if (ch->grad == nullptr) {
-            ch->grad = std::make_shared<la::vector<double>>(la::vector<double>());
+            la::vector<double> g;
+            g.resize(output.size());
+            ch->grad = std::make_shared<la::vector<double>>(std::move(g));
         }
 
-        auto& result = get_grad<la::vector<double>>(ch);
+        auto& result = get_grad<la::vector_like<double>>(ch);
         op::irelu_grad(result, grad, output);
     }
 
@@ -276,32 +286,34 @@ namespace autodiff {
 
     void tanh_eval(std::shared_ptr<op_t> t)
     {
-        auto& v = get_output<la::vector<double>>(get_child(t, 0));
+        auto& v = get_output<la::vector_like<double>>(get_child(t, 0));
 
         if (t->output == nullptr) {
             la::vector<double> z;
             z.resize(v.size());
             t->output = std::make_shared<la::vector<double>>(z);
         } else {
-            auto& z = get_output<la::vector<double>>(t);
+            auto& z = get_output<la::vector_like<double>>(t);
             la::zero(z);
         }
 
-        auto& z = get_output<la::vector<double>>(t);
-        autodiff::op::tanh(z, v);
+        auto& z = get_output<la::vector_like<double>>(t);
+        op::tanh(z, v);
     }
 
     void tanh_grad(std::shared_ptr<op_t> t)
     {
-        auto& grad = get_grad<la::vector<double>>(t);
-        auto& output = get_output<la::vector<double>>(t);
+        auto& grad = get_grad<la::vector_like<double>>(t);
+        auto& output = get_output<la::vector_like<double>>(t);
 
         auto ch = get_child(t, 0);
         if (ch->grad == nullptr) {
-            ch->grad = std::make_shared<la::vector<double>>(la::vector<double>());
+            la::vector<double> g;
+            g.resize(output.size());
+            ch->grad = std::make_shared<la::vector<double>>(std::move(g));
         }
 
-        auto& result = get_grad<la::vector<double>>(ch);
+        auto& result = get_grad<la::vector_like<double>>(ch);
         op::itanh_grad(result, grad, output);
     }
 
@@ -338,8 +350,8 @@ namespace autodiff {
 
 #ifndef NDEBUG
         for (int i = 1; i < g.adj[t->id].size(); ++i) {
-            assert(get_output<la::vector<double>>(get_child(t, i-1)).size()
-                == get_output<la::vector<double>>(get_child(t, i)).size());
+            assert(get_output<la::vector_like<double>>(get_child(t, i-1)).size()
+                == get_output<la::vector_like<double>>(get_child(t, i)).size());
         }
 #endif
 
@@ -348,14 +360,14 @@ namespace autodiff {
             z.resize(get_output<la::vector<double>>(get_child(t, 0)).size());
             t->output = std::make_shared<la::vector<double>>(z);
         } else {
-            auto& z = get_output<la::vector<double>>(t);
+            auto& z = get_output<la::vector_like<double>>(t);
             la::zero(z);
         }
 
-        auto& result = get_output<la::vector<double>>(t);
+        auto& result = get_output<la::vector_like<double>>(t);
 
         for (int i = 0; i < g.adj[t->id].size(); ++i) {
-            auto& u = get_output<la::vector<double>>(get_child(t, i));
+            auto& u = get_output<la::vector_like<double>>(get_child(t, i));
 
             la::iadd(result, u);
         }
@@ -365,17 +377,18 @@ namespace autodiff {
     {
         auto& g = *t->graph;
 
-        auto& grad = get_grad<la::vector<double>>(t);
+        auto& grad = get_grad<la::vector_like<double>>(t);
 
         for (int i = 0; i < g.adj[t->id].size(); ++i) {
             auto c = get_child(t, i);
 
             if (c->grad == nullptr) {
-                c->grad = std::make_shared<la::vector<double>>(la::vector<double>());
+                la::vector<double> g;
+                g.resize(grad.size());
+                c->grad = std::make_shared<la::vector<double>>(std::move(g));
             }
 
-            auto& u = get_grad<la::vector<double>>(c);
-            u.resize(grad.size());
+            auto& u = get_grad<la::vector_like<double>>(c);
 
             la::iadd(u, grad);
         }
@@ -393,32 +406,34 @@ namespace autodiff {
 
     void softmax_eval(std::shared_ptr<op_t> t)
     {
-        auto& v = get_output<la::vector<double>>(get_child(t, 0));
+        auto& v = get_output<la::vector_like<double>>(get_child(t, 0));
 
         if (t->output == nullptr) {
             la::vector<double> z;
             z.resize(v.size());
             t->output = std::make_shared<la::vector<double>>(z);
         } else {
-            auto& z = get_output<la::vector<double>>(t);
+            auto& z = get_output<la::vector_like<double>>(t);
             la::zero(z);
         }
 
-        auto& z = get_output<la::vector<double>>(t);
-        autodiff::op::softmax(z, v);
+        auto& z = get_output<la::vector_like<double>>(t);
+        op::softmax(z, v);
     }
 
     void softmax_grad(std::shared_ptr<op_t> t)
     {
-        auto& output = get_output<la::vector<double>>(t);
-        auto& grad = get_grad<la::vector<double>>(t);
+        auto& output = get_output<la::vector_like<double>>(t);
+        auto& grad = get_grad<la::vector_like<double>>(t);
 
         auto ch = get_child(t, 0);
         if (ch->grad == nullptr) {
-            ch->grad = std::make_shared<la::vector<double>>(la::vector<double>());
+            la::vector<double> g;
+            g.resize(output.size());
+            ch->grad = std::make_shared<la::vector<double>>(std::move(g));
         }
 
-        auto& result = get_grad<la::vector<double>>(ch);
+        auto& result = get_grad<la::vector_like<double>>(ch);
         op::isoftmax_grad(result, grad, output);
     }
     
@@ -434,32 +449,34 @@ namespace autodiff {
 
     void logsoftmax_eval(std::shared_ptr<op_t> t)
     {
-        auto& v = get_output<la::vector<double>>(get_child(t, 0));
+        auto& v = get_output<la::vector_like<double>>(get_child(t, 0));
 
         if (t->output == nullptr) {
             la::vector<double> z;
             z.resize(v.size());
             t->output = std::make_shared<la::vector<double>>(z);
         } else {
-            auto& z = get_output<la::vector<double>>(t);
+            auto& z = get_output<la::vector_like<double>>(t);
             la::zero(z);
         }
 
-        auto& z = get_output<la::vector<double>>(t);
-        autodiff::op::logsoftmax(z, v);
+        auto& z = get_output<la::vector_like<double>>(t);
+        op::logsoftmax(z, v);
     }
 
     void logsoftmax_grad(std::shared_ptr<op_t> t)
     {
-        auto& output = get_output<la::vector<double>>(t);
-        auto& grad = get_grad<la::vector<double>>(t);
+        auto& output = get_output<la::vector_like<double>>(t);
+        auto& grad = get_grad<la::vector_like<double>>(t);
 
         auto ch = get_child(t, 0);
         if (ch->grad == nullptr) {
-            ch->grad = std::make_shared<la::vector<double>>(la::vector<double>());
+            la::vector<double> g;
+            g.resize(output.size());
+            ch->grad = std::make_shared<la::vector<double>>(std::move(g));
         }
 
-        auto& result = get_grad<la::vector<double>>(ch);
+        auto& result = get_grad<la::vector_like<double>>(ch);
         op::ilogsoftmax_grad(result, grad, output);
     }
     
@@ -477,8 +494,8 @@ namespace autodiff {
 
     void dot_eval(std::shared_ptr<op_t> t)
     {
-        auto& v = get_output<la::vector<double>>(get_child(t, 0));
-        auto& u = get_output<la::vector<double>>(get_child(t, 1));
+        auto& v = get_output<la::vector_like<double>>(get_child(t, 0));
+        auto& u = get_output<la::vector_like<double>>(get_child(t, 1));
 
         t->output = std::make_shared<double>(la::dot(v, u));
     }
@@ -488,28 +505,30 @@ namespace autodiff {
         auto c0 = get_child(t, 0);
         auto c1 = get_child(t, 1);
 
-        auto& v = get_output<la::vector<double>>(c0);
-        auto& u = get_output<la::vector<double>>(c1);
+        auto& v = get_output<la::vector_like<double>>(c0);
+        auto& u = get_output<la::vector_like<double>>(c1);
 
         assert(v.size() == u.size());
 
         double grad = get_grad<double>(t);
 
         if (c0->grad == nullptr) {
-            c0->grad = std::make_shared<la::vector<double>>(la::vector<double>());
+            la::vector<double> g;
+            g.resize(u.size());
+            c0->grad = std::make_shared<la::vector<double>>(std::move(g));
         }
 
-        auto& v_grad = get_grad<la::vector<double>>(c0);
-        v_grad.resize(u.size());
+        auto& v_grad = get_grad<la::vector_like<double>>(c0);
 
         cblas_daxpy(v_grad.size(), grad, u.data(), 1, v_grad.data(), 1);
 
         if (c1->grad == nullptr) {
-            c1->grad = std::make_shared<la::vector<double>>(la::vector<double>());
+            la::vector<double> g;
+            g.resize(v.size());
+            c1->grad = std::make_shared<la::vector<double>>(std::move(g));
         }
 
-        auto& u_grad = get_grad<la::vector<double>>(c1);
-        u_grad.resize(v.size());
+        auto& u_grad = get_grad<la::vector_like<double>>(c1);
 
         cblas_daxpy(u_grad.size(), grad, v.data(), 1, u_grad.data(), 1);
     }

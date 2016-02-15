@@ -7,47 +7,43 @@ namespace autodiff {
 
     namespace op {
 
-        void iouter_prod(la::matrix<double>& result,
-            la::vector<double> const& x,
-            la::vector<double> const& y);
+        void iouter_prod(la::matrix_like<double>& result,
+            la::vector_like<double> const& x,
+            la::vector_like<double> const& y);
 
-        void ilmul(la::vector<double>& result,
-            la::matrix<double> const& a,
-            la::vector<double> const& x);
+        void ilmul(la::vector_like<double>& result,
+            la::matrix_like<double> const& a,
+            la::vector_like<double> const& x);
 
-        void iemul_grad(la::vector<double>& result,
-            la::vector<double> const& grad,
-            la::vector<double> const& v);
+        void logistic(la::vector_like<double>& u, la::vector_like<double> const& v);
 
-        void logistic(la::vector<double>& u, la::vector<double> const& v);
+        void ilogistic_grad(la::vector_like<double>& result,
+            la::vector_like<double> const& grad,
+            la::vector_like<double> const& output);
 
-        void ilogistic_grad(la::vector<double>& result,
-            la::vector<double> const& grad,
-            la::vector<double> const& output);
+        void relu(la::vector_like<double>& u, la::vector_like<double> const& v);
 
-        void relu(la::vector<double>& u, la::vector<double> const& v);
+        void irelu_grad(la::vector_like<double>& result,
+            la::vector_like<double> const& grad,
+            la::vector_like<double> const& output);
 
-        void irelu_grad(la::vector<double>& result,
-            la::vector<double> const& grad,
-            la::vector<double> const& output);
+        void tanh(la::vector_like<double>& u, la::vector_like<double> const& v);
 
-        void tanh(la::vector<double>& u, la::vector<double> const& v);
+        void itanh_grad(la::vector_like<double>& result,
+            la::vector_like<double> const& grad,
+            la::vector_like<double> const& output);
 
-        void itanh_grad(la::vector<double>& result,
-            la::vector<double> const& grad,
-            la::vector<double> const& output);
+        void softmax(la::vector_like<double>& u, la::vector_like<double> const& v);
 
-        void softmax(la::vector<double>& u, la::vector<double> const& v);
+        void isoftmax_grad(la::vector_like<double>& result,
+            la::vector_like<double> const& grad,
+            la::vector_like<double> const& output);
 
-        void isoftmax_grad(la::vector<double>& result,
-            la::vector<double> const& grad,
-            la::vector<double> const& output);
+        void logsoftmax(la::vector_like<double>& u, la::vector_like<double> const& v);
 
-        void logsoftmax(la::vector<double>& u, la::vector<double> const& v);
-
-        void ilogsoftmax_grad(la::vector<double>& result,
-            la::vector<double> const& grad,
-            la::vector<double> const& output);
+        void ilogsoftmax_grad(la::vector_like<double>& result,
+            la::vector_like<double> const& grad,
+            la::vector_like<double> const& output);
     }
 }
 

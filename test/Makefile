@@ -8,7 +8,7 @@ gpu: test-autodiff-gpu test-autodiff-op-gpu
 
 clean:
 	-rm *.o
-	-rm test_autodiff
+	-rm test-autodiff test-autodiff-op-gpu test-autodiff-gpu
 
 test-autodiff: test-autodiff.o ../autodiff.o ../autodiff-op.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ -lla -lebt -lcblas

@@ -12,23 +12,21 @@ namespace autodiff {
 
         namespace gpu {
 
-            void iouter_prod(la::gpu::matrix<double>& result,
-                la::gpu::vector<double> const& x,
-                la::gpu::vector<double> const& y)
+            void iouter_prod(la::gpu::matrix_like<double>& result,
+                la::gpu::vector_like<double> const& x,
+                la::gpu::vector_like<double> const& y)
             {
-                result.resize(x.size(), y.size());
                 double alpha = 1;
                 cublasDger(la::gpu::device::get_handle(), x.size(), y.size(), &alpha,
                     x.data(), 1, y.data(), 1, result.data(), x.size());
             }
 
-            void ilmul(la::gpu::vector<double>& result,
-                la::gpu::matrix<double> const& a,
-                la::gpu::vector<double> const& x)
+            void ilmul(la::gpu::vector_like<double>& result,
+                la::gpu::matrix_like<double> const& a,
+                la::gpu::vector_like<double> const& x)
             {
                 assert(a.rows() == x.size());
 
-                result.resize(a.cols());
                 double alpha = 1;
                 double beta = 1;
                 cublasDgemv(la::gpu::device::get_handle(), CUBLAS_OP_T, a.rows(), a.cols(),
@@ -44,7 +42,7 @@ namespace autodiff {
                 }
             };
 
-            void logistic(la::gpu::vector<double>& u, la::gpu::vector<double> const& v)
+            void logistic(la::gpu::vector_like<double>& u, la::gpu::vector_like<double> const& v)
             {
                 assert(u.size() == v.size());
 
@@ -71,13 +69,11 @@ namespace autodiff {
                 }
             };
 
-            void ilogistic_grad(la::gpu::vector<double>& result,
-                la::gpu::vector<double> const& grad,
-                la::gpu::vector<double> const& output)
+            void ilogistic_grad(la::gpu::vector_like<double>& result,
+                la::gpu::vector_like<double> const& grad,
+                la::gpu::vector_like<double> const& output)
             {
                 assert(grad.size() == output.size());
-
-                result.resize(grad.size());
 
                 thrust::for_each(
                     thrust::make_zip_iterator(thrust::make_tuple(
@@ -100,7 +96,7 @@ namespace autodiff {
                 }
             };
 
-            void relu(la::gpu::vector<double>& u, la::gpu::vector<double> const& v)
+            void relu(la::gpu::vector_like<double>& u, la::gpu::vector_like<double> const& v)
             {
                 assert(u.size() == v.size());
 
@@ -127,13 +123,11 @@ namespace autodiff {
                 }
             };
 
-            void irelu_grad(la::gpu::vector<double>& result,
-                la::gpu::vector<double> const& grad,
-                la::gpu::vector<double> const& output)
+            void irelu_grad(la::gpu::vector_like<double>& result,
+                la::gpu::vector_like<double> const& grad,
+                la::gpu::vector_like<double> const& output)
             {
                 assert(grad.size() == output.size());
-
-                result.resize(grad.size());
 
                 thrust::for_each(
                     thrust::make_zip_iterator(thrust::make_tuple(
@@ -165,7 +159,7 @@ namespace autodiff {
                 }
             };
 
-            void tanh(la::gpu::vector<double>& u, la::gpu::vector<double> const& v)
+            void tanh(la::gpu::vector_like<double>& u, la::gpu::vector_like<double> const& v)
             {
                 assert(u.size() == v.size());
 
@@ -192,13 +186,11 @@ namespace autodiff {
                 }
             };
 
-            void itanh_grad(la::gpu::vector<double>& result,
-                la::gpu::vector<double> const& grad,
-                la::gpu::vector<double> const& output)
+            void itanh_grad(la::gpu::vector_like<double>& result,
+                la::gpu::vector_like<double> const& grad,
+                la::gpu::vector_like<double> const& output)
             {
                 assert(grad.size() == output.size());
-
-                result.resize(grad.size());
 
                 thrust::for_each(
                     thrust::make_zip_iterator(thrust::make_tuple(
@@ -236,8 +228,8 @@ namespace autodiff {
 
             };
 
-            void softmax(la::gpu::vector<double>& u,
-                la::gpu::vector<double> const& v)
+            void softmax(la::gpu::vector_like<double>& u,
+                la::gpu::vector_like<double> const& v)
             {
                 assert(u.size() == v.size());
 
@@ -272,13 +264,11 @@ namespace autodiff {
 
             };
 
-            void isoftmax_grad(la::gpu::vector<double>& result,
-                la::gpu::vector<double> const& grad,
-                la::gpu::vector<double> const& output)
+            void isoftmax_grad(la::gpu::vector_like<double>& result,
+                la::gpu::vector_like<double> const& grad,
+                la::gpu::vector_like<double> const& output)
             {
                 assert(grad.size() == output.size());
-
-                result.resize(grad.size());
 
                 double mu = la::gpu::dot(grad, output);
 
@@ -306,8 +296,8 @@ namespace autodiff {
 
             };
 
-            void logsoftmax(la::gpu::vector<double>& u,
-                la::gpu::vector<double> const& v)
+            void logsoftmax(la::gpu::vector_like<double>& u,
+                la::gpu::vector_like<double> const& v)
             {
                 assert(u.size() == v.size());
 
@@ -342,13 +332,11 @@ namespace autodiff {
 
             };
 
-            void ilogsoftmax_grad(la::gpu::vector<double>& result,
-                la::gpu::vector<double> const& grad,
-                la::gpu::vector<double> const& output)
+            void ilogsoftmax_grad(la::gpu::vector_like<double>& result,
+                la::gpu::vector_like<double> const& grad,
+                la::gpu::vector_like<double> const& output)
             {
                 assert(grad.size() == output.size());
-
-                result.resize(grad.size());
 
                 double mu = thrust::reduce(
                     thrust::device_ptr<double const>(grad.begin()),
