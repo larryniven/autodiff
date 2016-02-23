@@ -19,8 +19,6 @@ namespace autodiff {
         std::shared_ptr<void> output;
         std::shared_ptr<void> grad;
 
-        std::shared_ptr<void> memory;
-    
         std::string name;
 
         computation_graph *graph;
@@ -106,7 +104,7 @@ namespace autodiff {
     void eval(std::shared_ptr<op_t> const& root,
         std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> const& funcs);
 
-    void grad(std::vector<std::shared_ptr<op_t>> const& top_to_order,
+    void grad(std::vector<std::shared_ptr<op_t>> const& topo_order,
         std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> const& funcs);
 
     void grad(std::shared_ptr<op_t> const& root,
@@ -125,12 +123,6 @@ namespace autodiff {
     T& get_grad(std::shared_ptr<op_t> t)
     {
         return *static_cast<T*>(t->grad.get());
-    }
-
-    template <class T>
-    T& get_memory(std::shared_ptr<op_t> t)
-    {
-        return *static_cast<T*>(t->memory.get());
     }
 
     static std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> eval_funcs {

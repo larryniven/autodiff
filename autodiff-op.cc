@@ -2,8 +2,8 @@
 #include "ebt/ebt.h"
 #include <cmath>
 #include <cassert>
-#include "cblas.h"
 #include <limits>
+#include <cblas.h>
 
 namespace autodiff {
 

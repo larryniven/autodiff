@@ -4,12 +4,12 @@
 #include <algorithm>
 #include <cassert>
 #include "autodiff/autodiff-op.h"
-#include "cblas.h"
+#include <cblas.h>
 
 namespace autodiff {
 
     op_t::op_t()
-        : output(nullptr), grad(nullptr), memory(nullptr)
+        : output(nullptr), grad(nullptr)
     {}
 
     computation_graph::computation_graph()
