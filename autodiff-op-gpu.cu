@@ -291,7 +291,7 @@ namespace autodiff {
                 __host__ __device__
                 void operator()(T t) const
                 {
-                    thrust::get<0>(t) = thrust::get<1>(t) -  s;
+                    thrust::get<0>(t) = thrust::get<1>(t) - s;
                 }
 
             };
