@@ -394,6 +394,62 @@ namespace autodiff {
         }
     }
     
+    std::shared_ptr<op_t> sub(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2)
+    {
+        auto& g = *t1->graph;
+
+        std::shared_ptr<op_t> result = g.make_node("sub");
+    
+        g.add_edge(result, t1);
+        g.add_edge(result, t2);
+    
+        return result;
+    }
+
+    void sub_eval(std::shared_ptr<op_t> t)
+    {
+        auto& u = get_output<la::vector_like<double>>(get_child(t, 0));
+        auto& v = get_output<la::vector_like<double>>(get_child(t, 1));
+
+        if (t->output == nullptr) {
+            la::vector<double> z;
+            z.resize(u.size());
+            t->output = std::make_shared<la::vector<double>>(z);
+        } else {
+            auto& z = get_output<la::vector_like<double>>(t);
+            la::zero(z);
+        }
+
+        auto& result = get_output<la::vector_like<double>>(t);
+        la::copy(result, u);
+        la::isub(result, v);
+    }
+
+    void sub_grad(std::shared_ptr<op_t> t)
+    {
+        auto& grad = get_grad<la::vector_like<double>>(t);
+
+        auto u_o = get_child(t, 0);
+        if (u_o->grad == nullptr) {
+            la::vector<double> g;
+            g.resize(grad.size());
+            u_o->grad = std::make_shared<la::vector<double>>(std::move(g));
+        }
+
+        auto v_o = get_child(t, 1);
+        if (v_o->grad == nullptr) {
+            la::vector<double> g;
+            g.resize(grad.size());
+            v_o->grad = std::make_shared<la::vector<double>>(std::move(g));
+        }
+
+        auto& u_grad = get_grad<la::vector_like<double>>(u_o);
+        auto& v_grad = get_grad<la::vector_like<double>>(v_o);
+
+        la::iadd(u_grad, grad);
+        la::isub(v_grad, grad);
+    }
+    
     std::shared_ptr<op_t> softmax(std::shared_ptr<op_t> t)
     {
         auto& g = *t->graph;

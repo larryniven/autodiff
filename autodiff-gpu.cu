@@ -362,6 +362,69 @@ namespace autodiff {
             }
         }
 
+        void sub_eval(std::shared_ptr<op_t> t)
+        {
+            auto& u = get_output<la::gpu::vector_like<double>>(get_child(t, 0));
+            auto& v = get_output<la::gpu::vector_like<double>>(get_child(t, 1));
+
+            if (t->output == nullptr) {
+                la::gpu::vector<double> g;
+                g.resize(u.size());
+                t->output = std::make_shared<la::gpu::vector<double>>(g);
+            } else {
+                auto& w = get_output<la::gpu::vector_like<double>>(t);
+                la::gpu::zero(w);
+            }
+
+            auto& result = get_output<la::gpu::vector_like<double>>(t);
+
+            la::gpu::copy(result, u);
+            la::gpu::isub(result, v);
+        }
+
+        void sub_grad(std::shared_ptr<op_t> t)
+        {
+            auto& grad = get_grad<la::gpu::vector_like<double>>(t);
+
+            auto u_o = get_child(t, 0);
+            if (u_o->grad == nullptr) {
+                la::gpu::vector<double> g;
+                g.resize(grad.size());
+                u_o->grad = std::make_shared<la::gpu::vector<double>>(std::move(g));
+            }
+
+            auto v_o = get_child(t, 1);
+            if (v_o->grad == nullptr) {
+                la::gpu::vector<double> g;
+                g.resize(grad.size());
+                v_o->grad = std::make_shared<la::gpu::vector<double>>(std::move(g));
+            }
+
+            auto& u_grad = get_grad<la::gpu::vector_like<double>>(u_o);
+            auto& v_grad = get_grad<la::gpu::vector_like<double>>(v_o);
+
+            la::gpu::iadd(u_grad, grad);
+            la::gpu::isub(v_grad, grad);
+        }
+
+        void sub_alloc(std::shared_ptr<op_t> t, memory_pool<double>& mem)
+        {
+            if (t->output == nullptr) {
+                auto& v = get_output<la::gpu::vector_like<double>>(get_child(t, 0));
+                double *d = mem.alloc(v.size());
+                t->output = std::make_shared<la::gpu::weak_vector<double>>(
+                    la::gpu::weak_vector<double>(d, v.size()));
+            }
+
+            if (t->grad == nullptr) {
+                auto& v = get_output<la::gpu::vector_like<double>>(get_child(t, 0));
+                double *d = mem.alloc(v.size());
+                la::gpu::weak_vector<double> g(d, v.size());
+                la::gpu::zero(g);
+                t->grad = std::make_shared<la::gpu::weak_vector<double>>(g);
+            }
+        }
+
         void softmax_eval(std::shared_ptr<op_t> t)
         {
             auto& v = get_output<la::gpu::vector_like<double>>(get_child(t, 0));

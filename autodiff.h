@@ -80,6 +80,10 @@ namespace autodiff {
     void add_eval(std::shared_ptr<op_t> t);
     void add_grad(std::shared_ptr<op_t> t);
 
+    std::shared_ptr<op_t> sub(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2);
+    void sub_eval(std::shared_ptr<op_t> t);
+    void sub_grad(std::shared_ptr<op_t> t);
+
     std::shared_ptr<op_t> softmax(std::shared_ptr<op_t> t);
     void softmax_eval(std::shared_ptr<op_t> t);
     void softmax_grad(std::shared_ptr<op_t> t);
@@ -133,6 +137,7 @@ namespace autodiff {
         { "tanh", tanh_eval },
         { "var", var_eval },
         { "add", add_eval },
+        { "sub", sub_eval },
         { "softmax", softmax_eval },
         { "logsoftmax", logsoftmax_eval },
         { "dot", dot_eval },
@@ -146,6 +151,7 @@ namespace autodiff {
         { "tanh", tanh_grad },
         { "var", var_grad },
         { "add", add_grad },
+        { "sub", sub_grad },
         { "softmax", softmax_grad },
         { "logsoftmax", logsoftmax_grad },
         { "dot", dot_grad },
