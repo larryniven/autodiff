@@ -9,24 +9,6 @@ namespace autodiff {
 
     namespace op {
 
-        void iouter_prod(la::matrix_like<double>& result,
-            la::vector_like<double> const& x,
-            la::vector_like<double> const& y)
-        {
-            cblas_dger(CblasRowMajor, x.size(), y.size(), 1, x.data(), 1, y.data(), 1,
-                result.data(), y.size());
-        }
-
-        void ilmul(la::vector_like<double>& result,
-            la::matrix_like<double> const& a,
-            la::vector_like<double> const& x)
-        {
-            assert(a.rows() == x.size());
-
-            cblas_dgemv(CblasRowMajor, CblasTrans, a.rows(), a.cols(), 1, a.data(), a.cols(),
-                x.data(), 1, 1, result.data(), 1);
-        }
-
         void logistic(la::vector_like<double>& u, la::vector_like<double> const& v)
         {
             assert(u.size() == v.size());

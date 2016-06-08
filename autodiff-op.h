@@ -7,14 +7,6 @@ namespace autodiff {
 
     namespace op {
 
-        void iouter_prod(la::matrix_like<double>& result,
-            la::vector_like<double> const& x,
-            la::vector_like<double> const& y);
-
-        void ilmul(la::vector_like<double>& result,
-            la::matrix_like<double> const& a,
-            la::vector_like<double> const& x);
-
         void logistic(la::vector_like<double>& u, la::vector_like<double> const& v);
 
         void ilogistic_grad(la::vector_like<double>& result,
