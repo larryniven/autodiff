@@ -15,6 +15,7 @@ namespace autodiff {
         op_t();
 
         int id;
+        bool grad_needed;
 
         std::shared_ptr<void> output;
         std::shared_ptr<void> grad;
@@ -58,6 +59,10 @@ namespace autodiff {
     std::shared_ptr<op_t> mul(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2);
     void mul_eval(std::shared_ptr<op_t> t);
     void mul_grad(std::shared_ptr<op_t> t);
+
+    std::shared_ptr<op_t> mmul(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2);
+    void mmul_eval(std::shared_ptr<op_t> t);
+    void mmul_grad(std::shared_ptr<op_t> t);
 
     std::shared_ptr<op_t> lmul(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2);
     void lmul_eval(std::shared_ptr<op_t> t);
@@ -104,6 +109,10 @@ namespace autodiff {
     void row_cat_eval(std::shared_ptr<op_t> t);
     void row_cat_grad(std::shared_ptr<op_t> t);
 
+    std::shared_ptr<op_t> col_cat(std::vector<std::shared_ptr<op_t>> const& col_vecs);
+    void col_cat_eval(std::shared_ptr<op_t> t);
+    void col_cat_grad(std::shared_ptr<op_t> t);
+
     std::vector<std::shared_ptr<op_t>> topo_order(std::vector<std::shared_ptr<op_t>> const& roots);
     std::vector<std::shared_ptr<op_t>> topo_order(std::shared_ptr<op_t> const& root);
 
@@ -139,6 +148,7 @@ namespace autodiff {
 
     static std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> eval_funcs {
         { "mul", mul_eval },
+        { "mmul", mmul_eval },
         { "lmul", lmul_eval },
         { "emul", emul_eval },
         { "logistic", logistic_eval },
@@ -150,11 +160,13 @@ namespace autodiff {
         { "softmax", softmax_eval },
         { "logsoftmax", logsoftmax_eval },
         { "dot", dot_eval },
-        { "row_cat", row_cat_eval }
+        { "row_cat", row_cat_eval },
+        { "col_cat", col_cat_eval },
     };
 
     static std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> grad_funcs {
         { "mul", mul_grad },
+        { "mmul", mmul_grad },
         { "lmul", lmul_grad },
         { "emul", emul_grad },
         { "logistic", logistic_grad },
@@ -166,7 +178,8 @@ namespace autodiff {
         { "softmax", softmax_grad },
         { "logsoftmax", logsoftmax_grad },
         { "dot", dot_grad },
-        { "row_cat", row_cat_grad }
+        { "row_cat", row_cat_grad },
+        { "col_cat", col_cat_grad },
     };
 
 }

@@ -44,6 +44,7 @@ namespace autodiff {
 
         result->name = name;
         result->graph = this;
+        result->grad_needed = false;
         vertices.push_back(result);
         adj.resize(vertices.size());
         result->id = vertices.size() - 1;
@@ -107,13 +108,13 @@ namespace autodiff {
         auto& A = get_output<la::matrix_like<double>>(A_o);
         auto& v = get_output<la::vector_like<double>>(v_o);
 
-        if (A_o->grad == nullptr) {
+        if (A_o->grad_needed && A_o->grad == nullptr) {
             la::matrix<double> g;
             g.resize(grad.size(), v.size());
             A_o->grad = std::make_shared<la::matrix<double>>(std::move(g));
         }
 
-        if (v_o->grad == nullptr) {
+        if (v_o->grad_needed && v_o->grad == nullptr) {
             la::vector<double> g;
             g.resize(A.cols());
             v_o->grad = std::make_shared<la::vector<double>>(std::move(g));
@@ -122,8 +123,80 @@ namespace autodiff {
         auto& A_grad = get_grad<la::matrix_like<double>>(A_o);
         auto& v_grad = get_grad<la::vector_like<double>>(v_o);
 
-        la::outer_prod(A_grad, grad, v);
-        la::lmul(v_grad, grad, A);
+        if (A_o->grad_needed) {
+            la::outer_prod(A_grad, grad, v);
+        }
+
+        if (v_o->grad_needed) {
+            la::lmul(v_grad, grad, A);
+        }
+    }
+
+    std::shared_ptr<op_t> mmul(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2)
+    {
+        assert(t1->graph == t2->graph);
+        assert(t1->graph != nullptr);
+
+        auto& g = *t1->graph;
+
+        std::shared_ptr<op_t> result = g.make_node("mmul");
+
+        g.add_edge(result, t1);
+        g.add_edge(result, t2);
+    
+        return result;
+    }
+    
+    void mmul_eval(std::shared_ptr<op_t> t)
+    {
+        auto& a = get_output<la::matrix_like<double>>(get_child(t, 0));
+        auto& b = get_output<la::matrix_like<double>>(get_child(t, 1));
+
+        if (t->output == nullptr) {
+            la::matrix<double> c;
+            c.resize(a.rows(), b.cols());
+            t->output = std::make_shared<la::matrix<double>>(c);
+        } else {
+            auto& c = get_output<la::matrix_like<double>>(t);
+            la::zero(c);
+        }
+
+        auto& c = get_output<la::matrix_like<double>>(t);
+        la::mul(c, a, b);
+    }
+
+    void mmul_grad(std::shared_ptr<op_t> t)
+    {
+        auto& grad = get_grad<la::matrix_like<double>>(t);
+
+        auto a_o = get_child(t, 0);
+        auto b_o = get_child(t, 1);
+
+        auto& a = get_output<la::matrix_like<double>>(a_o);
+        auto& b = get_output<la::matrix_like<double>>(b_o);
+
+        if (a_o->grad_needed && a_o->grad == nullptr) {
+            la::matrix<double> g;
+            g.resize(a.rows(), a.cols());
+            a_o->grad = std::make_shared<la::matrix<double>>(std::move(g));
+        }
+
+        if (b_o->grad_needed && b_o->grad == nullptr) {
+            la::matrix<double> g;
+            g.resize(b.rows(), b.cols());
+            b_o->grad = std::make_shared<la::matrix<double>>(std::move(g));
+        }
+
+        auto& a_grad = get_grad<la::matrix_like<double>>(a_o);
+        auto& b_grad = get_grad<la::matrix_like<double>>(b_o);
+
+        if (a_o->grad_needed) {
+            la::rtmul(a_grad, grad, b);
+        }
+
+        if (b_o->grad_needed) {
+            la::ltmul(b_grad, a, grad);
+        }
     }
 
     std::shared_ptr<op_t> lmul(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2)
@@ -169,13 +242,13 @@ namespace autodiff {
         auto& v = get_output<la::vector_like<double>>(v_o);
         auto& A = get_output<la::matrix_like<double>>(A_o);
 
-        if (A_o->grad == nullptr) {
+        if (A_o->grad_needed && A_o->grad == nullptr) {
             la::matrix<double> g;
             g.resize(v.size(), grad.size());
             A_o->grad = std::make_shared<la::matrix<double>>(std::move(g));
         }
 
-        if (v_o->grad == nullptr) {
+        if (v_o->grad_needed && v_o->grad == nullptr) {
             la::vector<double> g;
             g.resize(A.rows());
             v_o->grad = std::make_shared<la::vector<double>>(std::move(g));
@@ -184,8 +257,13 @@ namespace autodiff {
         auto& v_grad = get_grad<la::vector_like<double>>(v_o);
         auto& A_grad = get_grad<la::matrix_like<double>>(A_o);
 
-        la::outer_prod(A_grad, v, grad);
-        la::mul(v_grad, A, grad);
+        if (A_o->grad_needed) {
+            la::outer_prod(A_grad, v, grad);
+        }
+
+        if (v_o->grad_needed) {
+            la::mul(v_grad, A, grad);
+        }
     }
 
     std::shared_ptr<op_t> emul(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2)
@@ -710,7 +788,7 @@ namespace autodiff {
 
             assert(v.size() == m.cols());
 
-            if (c->grad == nullptr) {
+            if (c->grad_needed && c->grad == nullptr) {
                 la::vector<double> g;
                 g.resize(v.size());
                 c->grad = std::make_shared<la::vector<double>>(g);
@@ -718,8 +796,85 @@ namespace autodiff {
 
             auto& g = autodiff::get_grad<la::vector_like<double>>(c);
 
-            for (int j = 0; j < m.cols(); ++j) {
-                g(j) += m(i, j);
+            if (c->grad_needed) {
+                for (int j = 0; j < m.cols(); ++j) {
+                    g(j) += m(i, j);
+                }
+            }
+        }
+    }
+
+    std::shared_ptr<op_t> col_cat(std::vector<std::shared_ptr<op_t>> const& col_vecs)
+    {
+        auto& g = *col_vecs.front()->graph;
+
+        std::shared_ptr<op_t> result = g.make_node("col_cat");
+
+        for (auto& v: col_vecs) {
+            g.add_edge(result, v);
+        }
+
+        return result;
+    }
+
+    void col_cat_eval(std::shared_ptr<op_t> t)
+    {
+        auto& g = *t->graph;
+        assert(g.adj[t->id].size() > 0);
+
+        int cols = g.adj[t->id].size();
+        auto v0 = get_child(t, 0);
+        int rows = get_output<la::vector_like<double>>(v0).size();
+
+        if (t->output == nullptr) {
+            la::matrix<double> m;
+            m.resize(rows, cols);
+            t->output = std::make_shared<la::matrix<double>>(std::move(m));
+        }
+
+        auto& m = get_output<la::matrix_like<double>>(t);
+
+        assert(m.rows() == rows && m.cols() == cols);
+
+        for (int j = 0; j < m.cols(); ++j) {
+            auto vj = get_child(t, j);
+            auto& v = get_output<la::vector_like<double>>(vj);
+
+            assert(v.size() == rows);
+
+            for (int i = 0; i < m.rows(); ++i) {
+                m(i, j) = v(i);
+            }
+        }
+    }
+
+    void col_cat_grad(std::shared_ptr<op_t> t)
+    {
+        auto& g = *t->graph;
+
+        auto& m = autodiff::get_grad<la::matrix_like<double>>(t);
+
+        assert(m.cols() == g.adj[t->id].size());
+
+        for (int j = 0; j < g.adj[t->id].size(); ++j) {
+            auto c = get_child(t, j);
+
+            auto& v = autodiff::get_output<la::vector_like<double>>(c);
+
+            assert(v.size() == m.rows());
+
+            if (c->grad_needed && c->grad == nullptr) {
+                la::vector<double> g;
+                g.resize(v.size());
+                c->grad = std::make_shared<la::vector<double>>(g);
+            }
+
+            auto& g = autodiff::get_grad<la::vector_like<double>>(c);
+
+            if (c->grad_needed) {
+                for (int i = 0; i < m.rows(); ++i) {
+                    g(i) += m(i, j);
+                }
             }
         }
     }
@@ -801,6 +956,15 @@ namespace autodiff {
     void eval_vertex(std::shared_ptr<op_t> const& t,
         std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> const& funcs)
     {
+        auto& g = *t->graph;
+
+        for (int i = 0; i < g.adj[t->id].size(); ++i) {
+            if (g.vertices[g.adj[t->id][i]]->grad_needed) {
+                t->grad_needed = true;
+                break;
+            }
+        }
+
         funcs.at(t->name)(t);
     }
 
@@ -823,7 +987,9 @@ namespace autodiff {
         std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> const& funcs)
     {
         for (int i = 0; i < topo_order.size(); ++i) {
-            eval_vertex(topo_order[i], funcs);
+            if (topo_order[i]->grad_needed) {
+                eval_vertex(topo_order[i], funcs);
+            }
         }
     }
 
