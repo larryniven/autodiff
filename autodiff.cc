@@ -879,6 +879,47 @@ namespace autodiff {
         }
     }
 
+    std::shared_ptr<op_t> row_at(std::shared_ptr<op_t> const& t, int i)
+    {
+        auto& g = *t->graph;
+
+        std::shared_ptr<op_t> result = g.make_node("row_at");
+        result->data = std::make_shared<int>(i);
+    
+        g.add_edge(result, t);
+    
+        return result;
+    }
+
+    void row_at_eval(std::shared_ptr<op_t> t)
+    {
+        int i = *std::static_pointer_cast<int>(t->data);
+        auto& m = get_output<la::matrix_like<double>>(get_child(t, 0));
+        assert(i < m.rows());
+        la::weak_vector<double> v { m.data() + m.cols() * i, m.cols() };
+        t->output = std::make_shared<la::weak_vector<double>>(v);
+    }
+
+    void row_at_grad(std::shared_ptr<op_t> t)
+    {
+        int i = *std::static_pointer_cast<int>(t->data);
+        auto c = get_child(t, 0);
+
+        if (c->grad == nullptr) {
+            auto& m = get_output<la::matrix_like<double>>(c);
+            la::matrix<double> g;
+            g.resize(m.rows(), m.cols());
+            c->grad = std::make_shared<la::matrix<double>>(std::move(g));
+        }
+
+        auto& v = get_grad<la::vector_like<double>>(t);
+        auto& g = get_grad<la::matrix_like<double>>(c);
+
+        for (int d = 0; d < v.size(); ++d) {
+            g(i, d) += v(d);
+        }
+    }
+
     std::vector<std::shared_ptr<op_t>> topo_order(std::vector<std::shared_ptr<op_t>> const& roots)
     {
         enum class action_t {
