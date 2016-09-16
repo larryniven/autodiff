@@ -85,6 +85,10 @@ namespace autodiff {
     void tanh_eval(std::shared_ptr<op_t> t);
     void tanh_grad(std::shared_ptr<op_t> t);
 
+    std::shared_ptr<op_t> mexp(std::shared_ptr<op_t> input);
+    void mexp_eval(std::shared_ptr<op_t> t);
+    void mexp_grad(std::shared_ptr<op_t> t);
+
     std::shared_ptr<op_t> add(std::vector<std::shared_ptr<op_t>> t);
     std::shared_ptr<op_t> add(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2);
     void add_eval(std::shared_ptr<op_t> t);
@@ -159,6 +163,7 @@ namespace autodiff {
         { "logistic", logistic_eval },
         { "relu", relu_eval },
         { "tanh", tanh_eval },
+        { "mexp", mexp_eval },
         { "var", var_eval },
         { "add", add_eval },
         { "sub", sub_eval },
@@ -178,6 +183,7 @@ namespace autodiff {
         { "logistic", logistic_grad },
         { "relu", relu_grad },
         { "tanh", tanh_grad },
+        { "mexp", mexp_grad },
         { "var", var_grad },
         { "add", add_grad },
         { "sub", sub_grad },

@@ -457,6 +457,62 @@ namespace autodiff {
         op::itanh_grad(result, grad, output);
     }
 
+    std::shared_ptr<op_t> mexp(std::shared_ptr<op_t> input)
+    {
+        auto& g = *input->graph;
+
+        std::shared_ptr<op_t> result = g.make_node("mexp");
+        g.add_edge(result, input);
+    
+        return result;
+    }
+
+    void mexp_eval(std::shared_ptr<op_t> t)
+    {
+        auto& m = get_output<la::matrix_like<double>>(get_child(t, 0));
+
+        if (t->output == nullptr) {
+            la::matrix<double> z;
+            z.resize(m.rows(), m.cols());
+            t->output = std::make_shared<la::matrix<double>>(std::move(z));
+        } else {
+            auto& z = get_output<la::matrix_like<double>>(t);
+            la::zero(z);
+        }
+
+        auto& z = get_output<la::matrix_like<double>>(t);
+
+        for (int i = 0; i < z.rows(); ++i) {
+            for (int j = 0; j < z.cols(); ++j) {
+                z(i, j) = std::exp(m(i, j));
+            }
+        }
+    }
+
+    void mexp_grad(std::shared_ptr<op_t> t)
+    {
+        auto& grad = get_grad<la::matrix_like<double>>(t);
+        auto& output = get_output<la::matrix_like<double>>(t);
+
+        assert(grad.rows() == output.rows() && grad.cols() == output.cols());
+
+        auto ch = get_child(t, 0);
+
+        if (ch->grad == nullptr) {
+            la::matrix<double> g;
+            g.resize(output.rows(), output.cols());
+            ch->grad = std::make_shared<la::matrix<double>>(std::move(g));
+        }
+
+        auto& result = get_grad<la::matrix_like<double>>(ch);
+
+        for (int i = 0; i < result.rows(); ++i) {
+            for (int j = 0; j < result.cols(); ++j) {
+                result(i, j) += output(i, j) * grad(i, j);
+            }
+        }
+    }
+
     std::shared_ptr<op_t> add(std::vector<std::shared_ptr<op_t>> ts)
     {
         auto& g = *ts.front()->graph;
