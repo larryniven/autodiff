@@ -199,6 +199,140 @@ namespace autodiff {
         }
     }
 
+    std::shared_ptr<op_t> ltmul(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2)
+    {
+        assert(t1->graph == t2->graph);
+        assert(t1->graph != nullptr);
+
+        auto& g = *t1->graph;
+
+        std::shared_ptr<op_t> result = g.make_node("ltmul");
+
+        g.add_edge(result, t1);
+        g.add_edge(result, t2);
+    
+        return result;
+    }
+    
+    void ltmul_eval(std::shared_ptr<op_t> t)
+    {
+        auto& a = get_output<la::matrix_like<double>>(get_child(t, 0));
+        auto& b = get_output<la::matrix_like<double>>(get_child(t, 1));
+
+        if (t->output == nullptr) {
+            la::matrix<double> c;
+            c.resize(a.cols(), b.cols());
+            t->output = std::make_shared<la::matrix<double>>(c);
+        } else {
+            auto& c = get_output<la::matrix_like<double>>(t);
+            la::zero(c);
+        }
+
+        auto& c = get_output<la::matrix_like<double>>(t);
+        la::ltmul(c, a, b);
+    }
+
+    void ltmul_grad(std::shared_ptr<op_t> t)
+    {
+        auto& grad = get_grad<la::matrix_like<double>>(t);
+
+        auto a_o = get_child(t, 0);
+        auto b_o = get_child(t, 1);
+
+        auto& a = get_output<la::matrix_like<double>>(a_o);
+        auto& b = get_output<la::matrix_like<double>>(b_o);
+
+        if (a_o->grad_needed && a_o->grad == nullptr) {
+            la::matrix<double> g;
+            g.resize(a.rows(), a.cols());
+            a_o->grad = std::make_shared<la::matrix<double>>(std::move(g));
+        }
+
+        if (b_o->grad_needed && b_o->grad == nullptr) {
+            la::matrix<double> g;
+            g.resize(b.rows(), b.cols());
+            b_o->grad = std::make_shared<la::matrix<double>>(std::move(g));
+        }
+
+        auto& a_grad = get_grad<la::matrix_like<double>>(a_o);
+        auto& b_grad = get_grad<la::matrix_like<double>>(b_o);
+
+        if (a_o->grad_needed) {
+            la::rtmul(a_grad, grad, b);
+        }
+
+        if (b_o->grad_needed) {
+            la::mul(b_grad, a, grad);
+        }
+    }
+
+    std::shared_ptr<op_t> rtmul(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2)
+    {
+        assert(t1->graph == t2->graph);
+        assert(t1->graph != nullptr);
+
+        auto& g = *t1->graph;
+
+        std::shared_ptr<op_t> result = g.make_node("rtmul");
+
+        g.add_edge(result, t1);
+        g.add_edge(result, t2);
+    
+        return result;
+    }
+    
+    void rtmul_eval(std::shared_ptr<op_t> t)
+    {
+        auto& a = get_output<la::matrix_like<double>>(get_child(t, 0));
+        auto& b = get_output<la::matrix_like<double>>(get_child(t, 1));
+
+        if (t->output == nullptr) {
+            la::matrix<double> c;
+            c.resize(a.rows(), b.rows());
+            t->output = std::make_shared<la::matrix<double>>(c);
+        } else {
+            auto& c = get_output<la::matrix_like<double>>(t);
+            la::zero(c);
+        }
+
+        auto& c = get_output<la::matrix_like<double>>(t);
+        la::rtmul(c, a, b);
+    }
+
+    void rtmul_grad(std::shared_ptr<op_t> t)
+    {
+        auto& grad = get_grad<la::matrix_like<double>>(t);
+
+        auto a_o = get_child(t, 0);
+        auto b_o = get_child(t, 1);
+
+        auto& a = get_output<la::matrix_like<double>>(a_o);
+        auto& b = get_output<la::matrix_like<double>>(b_o);
+
+        if (a_o->grad_needed && a_o->grad == nullptr) {
+            la::matrix<double> g;
+            g.resize(a.rows(), a.cols());
+            a_o->grad = std::make_shared<la::matrix<double>>(std::move(g));
+        }
+
+        if (b_o->grad_needed && b_o->grad == nullptr) {
+            la::matrix<double> g;
+            g.resize(b.rows(), b.cols());
+            b_o->grad = std::make_shared<la::matrix<double>>(std::move(g));
+        }
+
+        auto& a_grad = get_grad<la::matrix_like<double>>(a_o);
+        auto& b_grad = get_grad<la::matrix_like<double>>(b_o);
+
+        if (a_o->grad_needed) {
+            la::mul(a_grad, grad, b);
+        }
+
+        if (b_o->grad_needed) {
+            la::ltmul(b_grad, a, grad);
+        }
+    }
+
     std::shared_ptr<op_t> lmul(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2)
     {
         assert(t1->graph == t2->graph);
