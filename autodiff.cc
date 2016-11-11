@@ -329,7 +329,7 @@ namespace autodiff {
         }
 
         if (b_o->grad_needed) {
-            la::ltmul(b_grad, a, grad);
+            la::ltmul(b_grad, grad, a);
         }
     }
 
