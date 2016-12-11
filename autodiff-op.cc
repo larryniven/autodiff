@@ -132,5 +132,77 @@ namespace autodiff {
                 result(i) += grad(i) - std::exp(output(i)) * mu;
             }
         }
+
+#if 0
+        void conv(la::tensor_like<double>& result,
+            la::tensor_like<double> const& u,
+            la::tensor_like<double> const& v)
+        {
+        }
+
+        void conv_linearize(la::matrix_like<double>& result,
+            la::tensor_like<double> const& u,
+            int f1, int f2)
+        {
+            assert(u.dim() == 3);
+
+            assert(result.rows(), u.size(0) * u.size(1));
+            assert(result.cols(), f1 * f2 * u.size(2));
+
+            int m = 0;
+
+            for (int i = 0; i < u.size(0); ++i) {
+                for (int j = 0; j < u.size(1); ++j) {
+
+                    int n = 0;
+
+                    for (int a = 0; a < f1; ++a) {
+                        for (int b = 0; b < f2; ++b) {
+                            for (int k = 0; k < u.size(2); ++k) {
+                                // FIXME
+                                result(m, n) = u({i + a, j + b, k});
+                                ++n;
+                            }
+                        }
+                    }
+
+                    ++m;
+
+                }
+            }
+        }
+
+        void conv_linearize_grad(la::tensor_like<double>& result,
+            la::matrix_like<double> const& u,
+            int f1, int f2)
+        {
+            assert(result.dim() == 3);
+
+            assert(u.rows(), result.size(0)* result.size(1));
+            assert(u.cols(), f1 * f2 * result.size(2));
+
+            int m = 0;
+
+            for (int i = - (f1 - 1) / 2; i < result.size(0) + (f1 - 1) / 2; ++i) {
+                for (int j = - (f2 - 1) / 2; j < result.size(1) + (f2 - 1) / 2; ++j) {
+
+                    int n = 0;
+
+                    for (int a = -i; a < f1; ++a) {
+                        for (int b = -j; b < f2; ++b) {
+                            for (int k = 0; k < u.size(2); ++k) {
+                                result(m, n) = u({i + a, j + b, k});
+                                ++n;
+                            }
+                        }
+                    }
+
+                    ++m;
+
+                }
+            }
+        }
+#endif
+
     }
 }

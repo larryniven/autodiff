@@ -36,6 +36,11 @@ namespace autodiff {
         void ilogsoftmax_grad(la::vector_like<double>& result,
             la::vector_like<double> const& grad,
             la::vector_like<double> const& output);
+
+        
+
+        void conv_linearize(la::matrix_like<double>& result, la::matrix_like<double> const& u,
+            int d1, int d2, int d3, int f1, int f2);
     }
 }
 
