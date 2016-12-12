@@ -130,6 +130,14 @@ namespace autodiff {
     void row_at_eval(std::shared_ptr<op_t> t);
     void row_at_grad(std::shared_ptr<op_t> t);
 
+    std::shared_ptr<op_t> conv_linearize(std::shared_ptr<op_t> const& t1, std::shared_ptr<op_t> t2);
+    void conv_linearize_eval(std::shared_ptr<op_t> t);
+    void conv_linearize_grad(std::shared_ptr<op_t> t);
+
+    std::shared_ptr<op_t> conv(std::shared_ptr<op_t> const& t1, std::shared_ptr<op_t> t2);
+    void conv_eval(std::shared_ptr<op_t> t);
+    void conv_grad(std::shared_ptr<op_t> t);
+
     std::vector<std::shared_ptr<op_t>> topo_order(std::vector<std::shared_ptr<op_t>> const& roots);
     std::vector<std::shared_ptr<op_t>> topo_order(std::shared_ptr<op_t> const& root);
 
@@ -183,6 +191,8 @@ namespace autodiff {
         { "row_cat", row_cat_eval },
         { "col_cat", col_cat_eval },
         { "row_at", row_at_eval },
+        { "conv_linearize", conv_linearize_eval },
+        { "conv", conv_eval },
     };
 
     static std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> grad_funcs {
@@ -205,6 +215,8 @@ namespace autodiff {
         { "row_cat", row_cat_grad },
         { "col_cat", col_cat_grad },
         { "row_at", row_at_grad },
+        { "conv_linearize", conv_linearize_grad },
+        { "conv", conv_grad },
     };
 
 }

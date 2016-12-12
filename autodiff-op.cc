@@ -133,21 +133,14 @@ namespace autodiff {
             }
         }
 
-#if 0
-        void conv(la::tensor_like<double>& result,
-            la::tensor_like<double> const& u,
-            la::tensor_like<double> const& v)
-        {
-        }
-
         void conv_linearize(la::matrix_like<double>& result,
             la::tensor_like<double> const& u,
             int f1, int f2)
         {
             assert(u.dim() == 3);
 
-            assert(result.rows(), u.size(0) * u.size(1));
-            assert(result.cols(), f1 * f2 * u.size(2));
+            assert(result.rows() == u.size(0) * u.size(1));
+            assert(result.cols() == f1 * f2 * u.size(2));
 
             int m = 0;
 
@@ -156,11 +149,10 @@ namespace autodiff {
 
                     int n = 0;
 
-                    for (int a = 0; a < f1; ++a) {
-                        for (int b = 0; b < f2; ++b) {
-                            for (int k = 0; k < u.size(2); ++k) {
-                                // FIXME
-                                result(m, n) = u({i + a, j + b, k});
+                    for (int a = std::max<int>(0, (f1 / 2) - i); a < f1; ++a) {
+                        for (int b = std::max<int>(0, (f2 / 2) - j); b < f2; ++b) {
+                            for (unsigned int k = 0; k < u.size(2); ++k) {
+                                result(m, n) = u({(unsigned int)(i + a), (unsigned int)(j + b), k});
                                 ++n;
                             }
                         }
@@ -178,20 +170,20 @@ namespace autodiff {
         {
             assert(result.dim() == 3);
 
-            assert(u.rows(), result.size(0)* result.size(1));
-            assert(u.cols(), f1 * f2 * result.size(2));
+            assert(u.rows() == result.size(0) * result.size(1));
+            assert(u.cols() == f1 * f2 * result.size(2));
 
             int m = 0;
 
-            for (int i = - (f1 - 1) / 2; i < result.size(0) + (f1 - 1) / 2; ++i) {
-                for (int j = - (f2 - 1) / 2; j < result.size(1) + (f2 - 1) / 2; ++j) {
+            for (int i = 0; i < result.size(0); ++i) {
+                for (int j = 0; j < result.size(1); ++j) {
 
                     int n = 0;
 
-                    for (int a = -i; a < f1; ++a) {
-                        for (int b = -j; b < f2; ++b) {
-                            for (int k = 0; k < u.size(2); ++k) {
-                                result(m, n) = u({i + a, j + b, k});
+                    for (int a = std::max<int>(0, (f1 / 2) - i); a < f1; ++a) {
+                        for (int b = std::max<int>(0, (f2 / 2) - j); b < f2; ++b) {
+                            for (unsigned int k = 0; k < result.size(2); ++k) {
+                                result({(unsigned int)(i + a), (unsigned int)(j + b), k}) += u(m, n);
                                 ++n;
                             }
                         }
@@ -202,7 +194,5 @@ namespace autodiff {
                 }
             }
         }
-#endif
-
     }
 }
