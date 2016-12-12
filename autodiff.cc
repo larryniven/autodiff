@@ -1159,22 +1159,8 @@ namespace autodiff {
 
     std::shared_ptr<op_t> conv(std::shared_ptr<op_t> const& t1, std::shared_ptr<op_t> t2)
     {
-        auto& g = *t1->graph;
-
-        std::shared_ptr<op_t> result = g.make_node("conv");
-
-        g.add_edge(result, t1);
-        g.add_edge(result, t2);
-
-        return result;
-    }
-
-    void conv_eval(std::shared_ptr<op_t> t)
-    {
-    }
-
-    void conv_grad(std::shared_ptr<op_t> t)
-    {
+        auto t = conv_linearize(t1, t2);
+        return mul(t, t2);
     }
 
     std::vector<std::shared_ptr<op_t>> topo_order(std::vector<std::shared_ptr<op_t>> const& roots)

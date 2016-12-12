@@ -192,7 +192,6 @@ namespace autodiff {
         { "col_cat", col_cat_eval },
         { "row_at", row_at_eval },
         { "conv_linearize", conv_linearize_eval },
-        { "conv", conv_eval },
     };
 
     static std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> grad_funcs {
@@ -216,7 +215,6 @@ namespace autodiff {
         { "col_cat", col_cat_grad },
         { "row_at", row_at_grad },
         { "conv_linearize", conv_linearize_grad },
-        { "conv", conv_grad },
     };
 
 }
