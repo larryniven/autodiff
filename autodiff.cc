@@ -44,7 +44,7 @@ namespace autodiff {
 
         result->name = name;
         result->graph = this;
-        result->grad_needed = false;
+        result->grad_needed = true;
         vertices.push_back(result);
         adj.resize(vertices.size());
         result->id = vertices.size() - 1;
@@ -1110,11 +1110,11 @@ namespace autodiff {
         }
     }
 
-    std::shared_ptr<op_t> conv_linearize(std::shared_ptr<op_t> const& t1, std::shared_ptr<op_t> t2)
+    std::shared_ptr<op_t> conv(std::shared_ptr<op_t> const& t1, std::shared_ptr<op_t> t2)
     {
         auto& g = *t1->graph;
 
-        std::shared_ptr<op_t> result = g.make_node("conv_linearize");
+        std::shared_ptr<op_t> result = g.make_node("conv");
 
         g.add_edge(result, t1);
         g.add_edge(result, t2);
@@ -1122,32 +1122,46 @@ namespace autodiff {
         return result;
     }
 
-    void conv_linearize_eval(std::shared_ptr<op_t> t)
+    void conv_eval(std::shared_ptr<op_t> t)
     {
         auto& u = autodiff::get_output<la::tensor_like<double>>(get_child(t, 0));
         auto& v = autodiff::get_output<la::tensor_like<double>>(get_child(t, 1));
 
         if (t->output == nullptr) {
-            la::matrix<double> w;
-            w.resize(u.size(0) * u.size(1), u.size(2) * v.size(0) * v.size(1));
+            la::tensor<double> w;
+            w.resize(std::vector<unsigned int> { u.size(0), u.size(1), v.size(3) });
             t->output = std::make_shared<la::matrix<double>>(w);
         }
 
-        auto& w = autodiff::get_output<la::matrix<double>>(t);
+        auto& result = autodiff::get_output<la::tensor_like<double>>(t);
 
-        op::conv_linearize(w, u, v.size(0), v.size(1));
+        la::matrix<double> u_mat;
+        u_mat.resize(u.size(0) * u.size(1), v.size(0) * v.size(1) * v.size(2));
+
+        op::conv_linearize(u_mat, u, v.size(0), v.size(1));
+
+        la::weak_matrix<double> v_mat { v.data(), v.size(0) * v.size(1) * v.size(2), v.size(3) };
+
+        la::mul(result, u_mat, v_mat);
     }
 
-    void conv_linearize_grad(std::shared_ptr<op_t> t)
+    void conv_grad(std::shared_ptr<op_t> t)
     {
         auto& u = autodiff::get_output<la::tensor_like<double>>(get_child(t, 0));
         auto& v = autodiff::get_output<la::tensor_like<double>>(get_child(t, 1));
 
-        auto c = get_child(t, 0);
+        auto& result = autodiff::get_output<la::tensor_like<double>>(t);
+
+        la::matrix<double> u_mat;
+        u_mat.resize(u.size(0) * u.size(1), v.size(0) * v.size(1) * v.size(2));
+
+        op::conv_linearize(u_mat, u, v.size(0), v.size(1));
+
+        la::weak_matrix<double> v_mat { v.data(), v.size(0) * v.size(1) * v.size(2), v.size(3) };
 
         if (c->grad == nullptr) {
             la::tensor<double> g;
-            g.resize({u.size(0), u.size(1), u.size(2)});
+            g.resize(std::vector<unsigned int> { u.size(0), u.size(1), u.size(2) });
             c->grad = std::make_shared<la::tensor<double>>(g);
         }
 
@@ -1155,12 +1169,6 @@ namespace autodiff {
         auto& g_u = autodiff::get_grad<la::tensor<double>>(c);
 
         op::conv_linearize_grad(g_u, g_w, v.size(0), v.size(1));
-    }
-
-    std::shared_ptr<op_t> conv(std::shared_ptr<op_t> const& t1, std::shared_ptr<op_t> t2)
-    {
-        auto t = conv_linearize(t1, t2);
-        return mul(t, t2);
     }
 
     std::vector<std::shared_ptr<op_t>> topo_order(std::vector<std::shared_ptr<op_t>> const& roots)

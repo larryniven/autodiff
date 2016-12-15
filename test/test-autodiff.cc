@@ -43,6 +43,9 @@ std::vector<std::function<void(void)>> tests {
 
         autodiff::grad(t, autodiff::grad_funcs);
 
+        auto r = get_child(t, 0);
+        assert(r->grad != nullptr);
+
         auto& A_grad = autodiff::get_grad<la::matrix_like<double>>(get_child(t, 0));
         auto& x_grad = autodiff::get_grad<la::vector_like<double>>(get_child(t, 1));
 
@@ -123,6 +126,38 @@ std::vector<std::function<void(void)>> tests {
             ebt::assert_equals(grad_expected(1), grad_result(1));
             ebt::assert_equals(grad_expected(2), grad_result(2));
         }
+    },
+
+    []() {
+        la::vector<double> u {
+            0, 0, 0, 0, 0,
+            0, 1, 0, 0, 0,
+            0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0,
+        };
+
+        la::vector<double> v {
+            1, 2, 3,
+            4, 5, 6,
+            7, 8, 9,
+        };
+
+        autodiff::computation_graph g;
+
+        la::weak_tensor<double> t {u.data(), std::vector<unsigned int>{5, 5, 1}};
+        la::weak_tensor<double> f {v.data(), std::vector<unsigned int>{3, 3, 1}};
+
+        auto c = autodiff::conv(g.var(t), g.var(f));
+
+        autodiff::eval(c, autodiff::eval_funcs);
+
+        auto& o = autodiff::get_output<la::tensor_like<double>>(c);
+
+        ebt::assert_equals(3, o.dim());
+        ebt::assert_equals(5, o.size(0));
+        ebt::assert_equals(5, o.size(1));
+        ebt::assert_equals(1, o.size(2));
     }
 };
 
