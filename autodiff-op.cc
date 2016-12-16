@@ -133,7 +133,7 @@ namespace autodiff {
             }
         }
 
-        void conv_linearize(la::matrix_like<double>& result,
+        void corr_linearize(la::matrix_like<double>& result,
             la::tensor_like<double> const& u,
             int f1, int f2)
         {
@@ -149,10 +149,16 @@ namespace autodiff {
 
                     int n = 0;
 
-                    for (int a = std::max<int>(0, (f1 / 2) - i); a < f1; ++a) {
-                        for (int b = std::max<int>(0, (f2 / 2) - j); b < f2; ++b) {
+                    for (int a = 0; a < f1; ++a) {
+                        for (int b = 0; b < f2; ++b) {
                             for (unsigned int k = 0; k < u.size(2); ++k) {
-                                result(m, n) = u({(unsigned int)(i + a), (unsigned int)(j + b), k});
+                                if (i + a - (f1 / 2) < 0 || j + b - (f2 / 2) < 0
+                                        || i + a - (f1 / 2) >= u.size(0) || j + b - (f2 / 2) >= u.size(1)) {
+                                    result(m, n) = 0;
+                                } else {
+                                    result(m, n) = u({(unsigned int)(i + a - (f1 / 2)), (unsigned int)(j + b - (f2 / 2)), k});
+                                }
+
                                 ++n;
                             }
                         }
@@ -164,7 +170,7 @@ namespace autodiff {
             }
         }
 
-        void conv_linearize_grad(la::tensor_like<double>& result,
+        void corr_linearize_grad(la::tensor_like<double>& result,
             la::matrix_like<double> const& u,
             int f1, int f2)
         {
@@ -180,10 +186,16 @@ namespace autodiff {
 
                     int n = 0;
 
-                    for (int a = std::max<int>(0, (f1 / 2) - i); a < f1; ++a) {
-                        for (int b = std::max<int>(0, (f2 / 2) - j); b < f2; ++b) {
+                    for (int a = 0; a < f1; ++a) {
+                        for (int b = 0; b < f2; ++b) {
                             for (unsigned int k = 0; k < result.size(2); ++k) {
-                                result({(unsigned int)(i + a), (unsigned int)(j + b), k}) += u(m, n);
+                                if (i + a - (f1 / 2) < 0 || j + b - (f2 / 2) < 0
+                                        || i + a - (f1 / 2) >= result.size(0) || j + b - (f2 / 2) >= result.size(1)) {
+                                    // do nothing
+                                } else {
+                                    result({(unsigned int)(i + a - (f1 / 2)), (unsigned int)(j + b - (f2 / 2)), k}) += u(m, n);
+                                }
+
                                 ++n;
                             }
                         }
