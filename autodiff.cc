@@ -1110,11 +1110,11 @@ namespace autodiff {
         }
     }
 
-    std::shared_ptr<op_t> conv(std::shared_ptr<op_t> const& t1, std::shared_ptr<op_t> t2)
+    std::shared_ptr<op_t> corr(std::shared_ptr<op_t> const& t1, std::shared_ptr<op_t> t2)
     {
         auto& g = *t1->graph;
 
-        std::shared_ptr<op_t> result = g.make_node("conv");
+        std::shared_ptr<op_t> result = g.make_node("corr");
 
         g.add_edge(result, t1);
         g.add_edge(result, t2);
@@ -1122,7 +1122,7 @@ namespace autodiff {
         return result;
     }
 
-    void conv_eval(std::shared_ptr<op_t> t)
+    void corr_eval(std::shared_ptr<op_t> t)
     {
         auto& u = autodiff::get_output<la::tensor_like<double>>(get_child(t, 0));
         auto& v = autodiff::get_output<la::tensor_like<double>>(get_child(t, 1));
@@ -1130,45 +1130,114 @@ namespace autodiff {
         if (t->output == nullptr) {
             la::tensor<double> w;
             w.resize(std::vector<unsigned int> { u.size(0), u.size(1), v.size(3) });
-            t->output = std::make_shared<la::matrix<double>>(w);
+            t->output = std::make_shared<la::tensor<double>>(w);
         }
-
-        auto& result = autodiff::get_output<la::tensor_like<double>>(t);
 
         la::matrix<double> u_mat;
         u_mat.resize(u.size(0) * u.size(1), v.size(0) * v.size(1) * v.size(2));
 
-        op::conv_linearize(u_mat, u, v.size(0), v.size(1));
+        op::corr_linearize(u_mat, u, v.size(0), v.size(1));
 
         la::weak_matrix<double> v_mat { v.data(), v.size(0) * v.size(1) * v.size(2), v.size(3) };
 
-        la::mul(result, u_mat, v_mat);
+        auto& result = autodiff::get_output<la::tensor_like<double>>(t);
+        la::weak_matrix<double> result_mat { result.data(), result.size(0) * result.size(1), result.size(2) };
+
+        /*
+        std::cout << "u" << std::endl;
+        for (int i = 0; i < u_mat.rows(); ++i) {
+            for (int j = 0; j < u_mat.cols(); ++j) {
+                std::cout << u_mat(i, j) << " ";
+            }
+            std::cout << std::endl;
+        }
+        std::cout << std::endl;
+        */
+
+        /*
+        std::cout << "v" << std::endl;
+        for (int i = 0; i < v_mat.rows(); ++i) {
+            for (int j = 0; j < v_mat.cols(); ++j) {
+                std::cout << v_mat(i, j) << " ";
+            }
+            std::cout << std::endl;
+        }
+        std::cout << std::endl;
+        */
+
+        la::mul(result_mat, u_mat, v_mat);
     }
 
-    void conv_grad(std::shared_ptr<op_t> t)
+    void corr_grad(std::shared_ptr<op_t> t)
     {
         auto& u = autodiff::get_output<la::tensor_like<double>>(get_child(t, 0));
         auto& v = autodiff::get_output<la::tensor_like<double>>(get_child(t, 1));
 
-        auto& result = autodiff::get_output<la::tensor_like<double>>(t);
-
         la::matrix<double> u_mat;
         u_mat.resize(u.size(0) * u.size(1), v.size(0) * v.size(1) * v.size(2));
 
-        op::conv_linearize(u_mat, u, v.size(0), v.size(1));
+        op::corr_linearize(u_mat, u, v.size(0), v.size(1));
 
         la::weak_matrix<double> v_mat { v.data(), v.size(0) * v.size(1) * v.size(2), v.size(3) };
 
-        if (c->grad == nullptr) {
+        auto u_op = get_child(t, 0);
+
+        if (u_op->grad_needed && u_op->grad == nullptr) {
             la::tensor<double> g;
             g.resize(std::vector<unsigned int> { u.size(0), u.size(1), u.size(2) });
-            c->grad = std::make_shared<la::tensor<double>>(g);
+            u_op->grad = std::make_shared<la::tensor<double>>(g);
         }
 
-        auto& g_w = autodiff::get_grad<la::matrix<double>>(t);
-        auto& g_u = autodiff::get_grad<la::tensor<double>>(c);
+        auto v_op = get_child(t, 1);
 
-        op::conv_linearize_grad(g_u, g_w, v.size(0), v.size(1));
+        if (v_op->grad_needed && v_op->grad == nullptr) {
+            la::tensor<double> g;
+            g.resize(std::vector<unsigned int> { v.size(0), v.size(1), v.size(2), v.size(3) });
+            v_op->grad = std::make_shared<la::tensor<double>>(g);
+        }
+
+        auto& o = autodiff::get_output<la::tensor_like<double>>(t);
+
+        auto& g_o = autodiff::get_grad<la::tensor_like<double>>(t);
+        auto& g_u = autodiff::get_grad<la::tensor_like<double>>(u_op);
+        auto& g_v = autodiff::get_grad<la::tensor_like<double>>(v_op);
+
+        la::weak_matrix<double> g_o_mat { g_o.data(), g_o.size(0) * g_o.size(1), g_o.size(2) };
+
+        /*
+        std::cout << "grad u" << std::endl;
+        for (int i = 0; i < g_o_mat.rows(); ++i) {
+            for (int j = 0; j < g_o_mat.cols(); ++j) {
+                std::cout << g_o_mat(i, j) << " ";
+            }
+            std::cout << std::endl;
+        }
+        std::cout << std::endl;
+        */
+
+        if (u_op->grad_needed) {
+            la::matrix<double> g_u_mat;
+            g_u_mat.resize(u_mat.rows(), u_mat.cols());
+            la::rtmul(g_u_mat, g_o_mat, v_mat);
+
+            /*
+            std::cout << "grad u" << std::endl;
+            for (int i = 0; i < g_u_mat.rows(); ++i) {
+                for (int j = 0; j < g_u_mat.cols(); ++j) {
+                    std::cout << g_u_mat(i, j) << " ";
+                }
+                std::cout << std::endl;
+            }
+            std::cout << std::endl;
+            */
+
+            op::corr_linearize_grad(g_u, g_u_mat, v.size(0), v.size(1));
+        }
+
+        if (v_op->grad_needed) {
+            la::weak_matrix<double> g_v_mat { g_v.data(), g_v.size(0) * g_v.size(1) * g_v.size(2), g_v.size(3) };
+            la::ltmul(g_v_mat, u_mat, g_o_mat);
+        }
     }
 
     std::vector<std::shared_ptr<op_t>> topo_order(std::vector<std::shared_ptr<op_t>> const& roots)
