@@ -125,7 +125,7 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
         }
     }},
 
-    {"test-conv", []() {
+    {"test-2d-conv", []() {
         la::vector<double> u {
             0, 0, 0, 0, 0,
             0, 1, 0, 0, 0,
@@ -161,7 +161,7 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
         ebt::assert_equals(7, o({0, 2, 0}));
     }},
 
-    {"test-conv-grad", []() {
+    {"test-2d-conv-grad", []() {
         la::vector<double> u {
             0, 0, 0, 0, 0,
             0, 1, 0, 0, 0,
@@ -210,9 +210,225 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
 
         auto& grad_v = autodiff::get_grad<la::tensor_like<double>>(var_v);
 
-        ebt::assert_equals(0, grad_v({0, 0, 0}));
-        ebt::assert_equals(1, grad_v({2, 2, 0}));
-    }}
+        ebt::assert_equals(0, grad_v({0, 0, 0, 0}));
+        ebt::assert_equals(1, grad_v({2, 2, 0, 0}));
+    }},
+
+    {"test-3d-conv", []() {
+        la::vector<double> u {
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+
+            0, 0, 1, 1, 0, 0, 0, 0, 0, 0,
+
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        };
+
+        la::vector<double> v {
+            1, 10, 2, 11, 3, 12,
+
+            4, 13, 5, 14, 6, 15,
+
+            7, 16, 8, 17, 9, 18
+        };
+
+        autodiff::computation_graph g;
+
+        la::weak_tensor<double> t {u.data(), {5, 5, 2}};
+        la::weak_tensor<double> f {v.data(), {3, 3, 2, 1}};
+
+        auto c = autodiff::corr(g.var(t), g.var(f));
+
+        autodiff::eval(c, autodiff::eval_funcs);
+
+        auto& o = autodiff::get_output<la::tensor_like<double>>(c);
+
+        ebt::assert_equals(3, o.dim());
+        ebt::assert_equals(5, o.size(0));
+        ebt::assert_equals(5, o.size(1));
+        ebt::assert_equals(1, o.size(2));
+
+        ebt::assert_equals(27, o({0, 0, 0}));
+        ebt::assert_equals(25, o({0, 1, 0}));
+        ebt::assert_equals(23, o({0, 2, 0}));
+    }},
+
+    {"test-3d-conv-grad", []() {
+        la::vector<double> u {
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+
+            0, 0, 1, 1, 0, 0, 0, 0, 0, 0,
+
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        };
+
+        la::vector<double> v {
+            1, 10, 2, 11, 3, 12,
+
+            4, 13, 5, 14, 6, 15,
+
+            7, 16, 8, 17, 9, 18
+        };
+
+        la::vector<double> grad {
+            1, 0, 0, 0, 0,
+            0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0,
+        };
+
+        autodiff::computation_graph g;
+
+        la::weak_tensor<double> u_t {u.data(), {5, 5, 2}};
+        la::weak_tensor<double> v_t {v.data(), {3, 3, 2, 1}};
+
+        auto var_u = g.var(u_t);
+        auto var_v = g.var(v_t);
+        auto c = autodiff::corr(var_u, var_v);
+
+        autodiff::eval(c, autodiff::eval_funcs);
+
+        la::weak_tensor<double> grad_t { grad.data(), {5, 5, 1} };
+        c->grad = std::make_shared<la::weak_tensor<double>>(grad_t);
+        autodiff::grad(c, autodiff::grad_funcs);
+
+        auto& grad_u = autodiff::get_grad<la::tensor_like<double>>(var_u);
+
+        ebt::assert_equals(5, grad_u({0, 0, 0}));
+        ebt::assert_equals(14, grad_u({0, 0, 1}));
+        ebt::assert_equals(9, grad_u({1, 1, 0}));
+        ebt::assert_equals(18, grad_u({1, 1, 1}));
+
+        auto& grad_v = autodiff::get_grad<la::tensor_like<double>>(var_v);
+
+        ebt::assert_equals(0, grad_v({0, 0, 0, 0}));
+        ebt::assert_equals(0, grad_v({0, 0, 1, 0}));
+        ebt::assert_equals(1, grad_v({2, 2, 0, 0}));
+        ebt::assert_equals(1, grad_v({2, 2, 1, 0}));
+    }},
+
+    {"test-3d-multi-conv", []() {
+        la::vector<double> u {
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+
+            0, 0, 1, 1, 0, 0, 0, 0, 0, 0,
+
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        };
+
+        la::vector<double> v {
+            1, 19, 10, 28,
+            2, 20, 11, 29,
+            3, 21, 12, 30,
+            4, 22, 13, 31,
+            5, 23, 14, 32,
+            6, 24, 15, 33,
+            7, 25, 16, 34,
+            8, 26, 17, 35,
+            9, 27, 18, 36,
+        };
+
+        autodiff::computation_graph g;
+
+        la::weak_tensor<double> t {u.data(), {5, 5, 2}};
+        la::weak_tensor<double> f {v.data(), {3, 3, 2, 2}};
+
+        auto c = autodiff::corr(g.var(t), g.var(f));
+
+        autodiff::eval(c, autodiff::eval_funcs);
+
+        auto& o = autodiff::get_output<la::tensor_like<double>>(c);
+
+        ebt::assert_equals(3, o.dim());
+        ebt::assert_equals(5, o.size(0));
+        ebt::assert_equals(5, o.size(1));
+        ebt::assert_equals(2, o.size(2));
+
+        ebt::assert_equals(27, o({0, 0, 0}));
+        ebt::assert_equals(25, o({0, 1, 0}));
+        ebt::assert_equals(23, o({0, 2, 0}));
+
+        ebt::assert_equals(63, o({0, 0, 1}));
+        ebt::assert_equals(61, o({0, 1, 1}));
+        ebt::assert_equals(59, o({0, 2, 1}));
+    }},
+
+    {"test-3d-multi-conv-grad", []() {
+        la::vector<double> u {
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+
+            0, 0, 1, 1, 0, 0, 0, 0, 0, 0,
+
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        };
+
+        la::vector<double> v {
+            1, 19, 10, 28,
+            2, 20, 11, 29,
+            3, 21, 12, 30,
+            4, 22, 13, 31,
+            5, 23, 14, 32,
+            6, 24, 15, 33,
+            7, 25, 16, 34,
+            8, 26, 17, 35,
+            9, 27, 18, 36,
+        };
+
+        la::vector<double> grad {
+            0, 1, 0, 0, 0, 0, 0, 0, 0, 0,
+
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        };
+
+        autodiff::computation_graph g;
+
+        la::weak_tensor<double> u_t {u.data(), {5, 5, 2}};
+        la::weak_tensor<double> v_t {v.data(), {3, 3, 2, 2}};
+
+        auto var_u = g.var(u_t);
+        auto var_v = g.var(v_t);
+        auto c = autodiff::corr(var_u, var_v);
+
+        autodiff::eval(c, autodiff::eval_funcs);
+
+        la::weak_tensor<double> grad_t { grad.data(), {5, 5, 2} };
+        c->grad = std::make_shared<la::weak_tensor<double>>(grad_t);
+
+        autodiff::grad(c, autodiff::grad_funcs);
+
+        auto& grad_u = autodiff::get_grad<la::tensor_like<double>>(var_u);
+
+        ebt::assert_equals(23, grad_u({0, 0, 0}));
+        ebt::assert_equals(24, grad_u({0, 1, 0}));
+        ebt::assert_equals(27, grad_u({1, 1, 0}));
+
+        ebt::assert_equals(32, grad_u({0, 0, 1}));
+        ebt::assert_equals(33, grad_u({0, 1, 1}));
+        ebt::assert_equals(36, grad_u({1, 1, 1}));
+
+    }},
 };
 
 int main()
