@@ -9,23 +9,30 @@ namespace autodiff {
 
     namespace op {
 
-        void logistic(la::vector_like<double>& u, la::vector_like<double> const& v)
+        void logistic(la::tensor_like<double>& u, la::tensor_like<double> const& v)
         {
             assert(u.size() == v.size());
 
+            double *u_data = u.data();
+            double const *v_data = v.data();
+
             for (int i = 0; i < v.size(); ++i) {
-                u(i) = 1 / (1 + std::exp(-v(i)));
+                u_data[i] = 1 / (1 + std::exp(-v_data[i]));
             }
         }
 
-        void ilogistic_grad(la::vector_like<double>& result,
-            la::vector_like<double> const& grad,
-            la::vector_like<double> const& output)
+        void ilogistic_grad(la::tensor_like<double>& result,
+            la::tensor_like<double> const& grad,
+            la::tensor_like<double> const& output)
         {
-            assert(grad.size() == output.size());
+            assert(result.size() == grad.size() && grad.size() == output.size());
+
+            double *result_data = result.data();
+            double const *grad_data = grad.data();
+            double const *output_data = output.data();
 
             for (int i = 0; i < output.size(); ++i) {
-                result(i) += grad(i) * output(i) * (1 - output(i));
+                result_data[i] += grad_data[i] * output_data[i] * (1 - output_data[i]);
             }
         }
 

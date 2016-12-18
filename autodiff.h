@@ -61,10 +61,6 @@ namespace autodiff {
     void mul_eval(std::shared_ptr<op_t> t);
     void mul_grad(std::shared_ptr<op_t> t);
 
-    std::shared_ptr<op_t> mmul(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2);
-    void mmul_eval(std::shared_ptr<op_t> t);
-    void mmul_grad(std::shared_ptr<op_t> t);
-
     std::shared_ptr<op_t> ltmul(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2);
     void ltmul_eval(std::shared_ptr<op_t> t);
     void ltmul_grad(std::shared_ptr<op_t> t);
@@ -72,10 +68,6 @@ namespace autodiff {
     std::shared_ptr<op_t> rtmul(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2);
     void rtmul_eval(std::shared_ptr<op_t> t);
     void rtmul_grad(std::shared_ptr<op_t> t);
-
-    std::shared_ptr<op_t> lmul(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2);
-    void lmul_eval(std::shared_ptr<op_t> t);
-    void lmul_grad(std::shared_ptr<op_t> t);
 
     std::shared_ptr<op_t> emul(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2);
     void emul_eval(std::shared_ptr<op_t> t);
@@ -169,10 +161,8 @@ namespace autodiff {
 
     static std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> eval_funcs {
         { "mul", mul_eval },
-        { "mmul", mmul_eval },
         { "ltmul", ltmul_eval },
         { "rtmul", rtmul_eval },
-        { "lmul", lmul_eval },
         { "emul", emul_eval },
         { "logistic", logistic_eval },
         { "relu", relu_eval },
@@ -192,10 +182,8 @@ namespace autodiff {
 
     static std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> grad_funcs {
         { "mul", mul_grad },
-        { "mmul", mmul_grad },
         { "ltmul", ltmul_grad },
         { "rtmul", rtmul_grad },
-        { "lmul", lmul_grad },
         { "emul", emul_grad },
         { "logistic", logistic_grad },
         { "relu", relu_grad },

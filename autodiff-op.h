@@ -7,11 +7,11 @@ namespace autodiff {
 
     namespace op {
 
-        void logistic(la::vector_like<double>& u, la::vector_like<double> const& v);
+        void logistic(la::tensor_like<double>& u, la::tensor_like<double> const& v);
 
-        void ilogistic_grad(la::vector_like<double>& result,
-            la::vector_like<double> const& grad,
-            la::vector_like<double> const& output);
+        void ilogistic_grad(la::tensor_like<double>& result,
+            la::tensor_like<double> const& grad,
+            la::tensor_like<double> const& output);
 
         void relu(la::vector_like<double>& u, la::vector_like<double> const& v);
 
