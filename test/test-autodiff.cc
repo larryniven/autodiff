@@ -4,7 +4,7 @@
 
 std::vector<std::pair<std::string, std::function<void(void)>>> tests {
     {"test-mul", []() {
-        la::vector<double> x { 1, 2, 3 };
+        la::vector<double> x { 1, 2 };
 
         la::matrix<double> A {
             { 1, 2, 3 },
@@ -13,20 +13,21 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
 
         autodiff::computation_graph g;
 
-        auto t = autodiff::mul(g.var(A), g.var(x));
+        auto t = autodiff::mul(g.var(la::weak_tensor<double> { x }), g.var(la::weak_tensor<double> { A }));
 
         autodiff::eval(t, autodiff::eval_funcs);
 
-        auto& result = autodiff::get_output<la::vector_like<double>>(t);
+        la::weak_vector<double> result = autodiff::get_output<la::tensor_like<double>>(t).as_vector();
 
-        ebt::assert_equals(14, result(0));
-        ebt::assert_equals(32, result(1));
+        ebt::assert_equals(9, result(0));
+        ebt::assert_equals(12, result(1));
+        ebt::assert_equals(15, result(2));
     }},
 
     {"test-mul-grad", []() {
-        la::vector<double> grad { 7, 8 };
+        la::vector<double> grad { 7, 8, 9 };
 
-        la::vector<double> x { 1, 2, 3 };
+        la::vector<double> x { 1, 2 };
 
         la::matrix<double> A {
             { 1, 2, 3 },
@@ -35,29 +36,28 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
 
         autodiff::computation_graph g;
 
-        auto t = autodiff::mul(g.var(A), g.var(x));
+        auto t = autodiff::mul(g.var(la::weak_tensor<double>{ x }), g.var(la::weak_tensor<double>{ A }));
 
-        t->grad = std::make_shared<la::vector<double>>(grad);
+        t->grad = std::make_shared<la::weak_tensor<double>>(la::weak_tensor<double> { grad });
 
         autodiff::grad(t, autodiff::grad_funcs);
 
         auto r = get_child(t, 0);
         assert(r->grad != nullptr);
 
-        auto& A_grad = autodiff::get_grad<la::matrix_like<double>>(get_child(t, 0));
-        auto& x_grad = autodiff::get_grad<la::vector_like<double>>(get_child(t, 1));
+        la::weak_vector<double> x_grad = autodiff::get_grad<la::tensor_like<double>>(get_child(t, 0)).as_vector();
+        la::weak_matrix<double> A_grad = autodiff::get_grad<la::tensor_like<double>>(get_child(t, 1)).as_matrix();
+
+        ebt::assert_equals(50, x_grad(0));
+        ebt::assert_equals(122, x_grad(1));
 
         ebt::assert_equals(7, A_grad(0, 0));
-        ebt::assert_equals(14, A_grad(0, 1));
-        ebt::assert_equals(21, A_grad(0, 2));
+        ebt::assert_equals(8, A_grad(0, 1));
+        ebt::assert_equals(9, A_grad(0, 2));
 
-        ebt::assert_equals(8, A_grad(1, 0));
+        ebt::assert_equals(14, A_grad(1, 0));
         ebt::assert_equals(16, A_grad(1, 1));
-        ebt::assert_equals(24, A_grad(1, 2));
-
-        ebt::assert_equals(39, x_grad(0));
-        ebt::assert_equals(54, x_grad(1));
-        ebt::assert_equals(69, x_grad(2));
+        ebt::assert_equals(18, A_grad(1, 2));
     }},
 
     {"test-logsoftmax", []() {
@@ -67,9 +67,9 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
 
         autodiff::computation_graph g;
 
-        auto t = autodiff::logsoftmax(g.var(x));
+        auto t = autodiff::logsoftmax(g.var(la::weak_tensor<double>{ x }));
         autodiff::eval(t, autodiff::eval_funcs);
-        auto& result = autodiff::get_output<la::vector_like<double>>(t);
+        la::weak_vector<double> result = autodiff::get_output<la::tensor_like<double>>(t).as_vector();
 
         ebt::assert_equals(expected(0), result(0));
         ebt::assert_equals(expected(1), result(1));
@@ -80,10 +80,11 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
             la::vector<double> grad_expected {
                 0.909969426716728, -0.24472847121259633, -0.665240955655122 };
 
-            t->grad = std::make_shared<la::vector<double>>(grad);
+            t->grad = std::make_shared<la::weak_tensor<double>>(la::weak_tensor<double>{ grad });
             autodiff::grad(t, autodiff::grad_funcs);
 
-            auto& grad_result = autodiff::get_grad<la::vector_like<double>>(autodiff::get_child(t, 0));
+            la::weak_vector<double> grad_result = autodiff::get_grad<la::tensor_like<double>>(
+                autodiff::get_child(t, 0)).as_vector();
 
             ebt::assert_equals(grad_expected(0), grad_result(0));
             ebt::assert_equals(grad_expected(1), grad_result(1));
@@ -97,10 +98,11 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
             la::vector<double> grad_expected {
                 -0.09003057328316189, 0.7552715287884038, -0.665240955655122 };
 
-            t->grad = std::make_shared<la::vector<double>>(grad);
+            t->grad = std::make_shared<la::weak_tensor<double>>(la::weak_tensor<double>{ grad });
             autodiff::grad(t, autodiff::grad_funcs);
 
-            auto& grad_result = autodiff::get_grad<la::vector_like<double>>(autodiff::get_child(t, 0));
+            la::weak_vector<double> grad_result = autodiff::get_grad<la::tensor_like<double>>(
+                autodiff::get_child(t, 0)).as_vector();
 
             ebt::assert_equals(grad_expected(0), grad_result(0));
             ebt::assert_equals(grad_expected(1), grad_result(1));
@@ -114,10 +116,11 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
             la::vector<double> grad_expected {
                 -0.09003057328316189, -0.24472847121259633, 0.33475904434698833 };
 
-            t->grad = std::make_shared<la::vector<double>>(grad);
+            t->grad = std::make_shared<la::weak_tensor<double>>(la::weak_tensor<double>{ grad });
             autodiff::grad(t, autodiff::grad_funcs);
 
-            auto& grad_result = autodiff::get_grad<la::vector_like<double>>(autodiff::get_child(t, 0));
+            la::weak_vector<double> grad_result = autodiff::get_grad<la::tensor_like<double>>(
+                autodiff::get_child(t, 0)).as_vector();
 
             ebt::assert_equals(grad_expected(0), grad_result(0));
             ebt::assert_equals(grad_expected(1), grad_result(1));
@@ -142,10 +145,10 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
 
         autodiff::computation_graph g;
 
-        la::weak_tensor<double> t {u.data(), {5, 5, 1}};
-        la::weak_tensor<double> f {v.data(), {3, 3, 1, 1}};
+        la::weak_tensor<double> u_t {u.data(), {5, 5, 1}};
+        la::weak_tensor<double> v_t {v.data(), {3, 3, 1, 1}};
 
-        auto c = autodiff::corr(g.var(t), g.var(f));
+        auto c = autodiff::corr(g.var(u_t), g.var(v_t));
 
         autodiff::eval(c, autodiff::eval_funcs);
 
