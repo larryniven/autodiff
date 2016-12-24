@@ -581,8 +581,13 @@ namespace autodiff {
         assert(g.adj[t->id].size() > 0);
 
         for (int i = 1; i < g.adj[t->id].size(); ++i) {
-            assert(get_output<la::tensor_like<double>>(get_child(t, i-1)).vec_size()
-                == get_output<la::tensor_like<double>>(get_child(t, i)).vec_size());
+            if (get_output<la::tensor_like<double>>(get_child(t, i-1)).vec_size()
+                    != get_output<la::tensor_like<double>>(get_child(t, i)).vec_size())
+            {
+                std::cerr << get_output<la::tensor_like<double>>(get_child(t, i-1)).vec_size()
+                    << " != " << get_output<la::tensor_like<double>>(get_child(t, i)).vec_size() << std::endl;
+                exit(1);
+            }
         }
 
         if (t->output == nullptr) {
@@ -898,7 +903,7 @@ namespace autodiff {
 
             auto& v = autodiff::get_output<la::tensor_like<double>>(c);
 
-            assert(v.vec_size() == m.size(0));
+            assert(v.vec_size() == m.size(1));
 
             if (c->grad_needed && c->grad == nullptr) {
                 la::tensor<double> g;

@@ -13,15 +13,18 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
 
         autodiff::computation_graph g;
 
-        auto t = autodiff::mul(g.var(la::weak_tensor<double> { x }), g.var(la::weak_tensor<double> { A }));
+        auto x_var = g.var(la::weak_tensor<double> { x });
+        auto A_var = g.var(la::weak_tensor<double> { A });
+
+        auto t = autodiff::mul(x_var, A_var);
 
         autodiff::eval(t, autodiff::eval_funcs);
 
-        la::weak_vector<double> result = autodiff::get_output<la::tensor_like<double>>(t).as_vector();
+        la::tensor_like<double>& result = autodiff::get_output<la::tensor_like<double>>(t);
 
-        ebt::assert_equals(9, result(0));
-        ebt::assert_equals(12, result(1));
-        ebt::assert_equals(15, result(2));
+        ebt::assert_equals(9, result({0}));
+        ebt::assert_equals(12, result({1}));
+        ebt::assert_equals(15, result({2}));
     }},
 
     {"test-mul-grad", []() {
