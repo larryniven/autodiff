@@ -122,9 +122,19 @@ namespace autodiff {
     void row_at_eval(std::shared_ptr<op_t> t);
     void row_at_grad(std::shared_ptr<op_t> t);
 
+    std::shared_ptr<op_t> reshape(std::shared_ptr<op_t> const& t, std::vector<unsigned int> sizes);
+    void reshape_eval(std::shared_ptr<op_t> t);
+    void reshape_grad(std::shared_ptr<op_t> t);
+
+    std::shared_ptr<op_t> rep_row_to(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2);
+    void rep_row_to_eval(std::shared_ptr<op_t> t);
+    void rep_row_to_grad(std::shared_ptr<op_t> t);
+
+    std::shared_ptr<op_t> corr_linearize(std::shared_ptr<op_t> const& t1, std::shared_ptr<op_t> t2);
+    void corr_linearize_eval(std::shared_ptr<op_t> t);
+    void corr_linearize_grad(std::shared_ptr<op_t> t);
+
     std::shared_ptr<op_t> corr(std::shared_ptr<op_t> const& t1, std::shared_ptr<op_t> t2);
-    void corr_eval(std::shared_ptr<op_t> t);
-    void corr_grad(std::shared_ptr<op_t> t);
 
     std::vector<std::shared_ptr<op_t>> topo_order(std::vector<std::shared_ptr<op_t>> const& roots);
     std::vector<std::shared_ptr<op_t>> topo_order(std::shared_ptr<op_t> const& root);
@@ -177,7 +187,9 @@ namespace autodiff {
         { "row_cat", row_cat_eval },
         { "col_cat", col_cat_eval },
         { "row_at", row_at_eval },
-        { "corr", corr_eval },
+        { "reshape", reshape_eval },
+        { "rep_row_to", rep_row_to_eval },
+        { "corr_linearize", corr_linearize_eval },
     };
 
     static std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> grad_funcs {
@@ -198,7 +210,9 @@ namespace autodiff {
         { "row_cat", row_cat_grad },
         { "col_cat", col_cat_grad },
         { "row_at", row_at_grad },
-        { "corr", corr_grad },
+        { "reshape", reshape_grad },
+        { "rep_row_to", rep_row_to_grad },
+        { "corr_linearize", corr_linearize_grad },
     };
 
 }

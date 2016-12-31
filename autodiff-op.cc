@@ -178,35 +178,36 @@ namespace autodiff {
 
             unsigned int d3 = u.vec_size() / (u.size(0) * u.size(1));
 
-            assert(result.dim() == 2);
-            assert(result.size(0) == u.size(0) * u.size(1));
-            assert(result.size(1) == f1 * f2 * d3);
-
             la::weak_tensor<double> u3 { const_cast<double*>(u.data()), { u.size(0), u.size(1), d3 } };
 
-            int m = 0;
+            int z = 0;
 
-            for (int i = 0; i < u3.size(0); ++i) {
-                for (int j = 0; j < u3.size(1); ++j) {
+            double *result_data = result.data();
+            double const *u3_data = u3.data();
 
-                    int n = 0;
+            unsigned int s0 = u3.size(0);
+            unsigned int s1 = u3.size(1);
+            unsigned int s2 = u3.size(2);
+
+            for (int i = 0; i < s0; ++i) {
+                for (int j = 0; j < s1; ++j) {
 
                     for (int a = 0; a < f1; ++a) {
                         for (int b = 0; b < f2; ++b) {
-                            for (int k = 0; k < u3.size(2); ++k) {
-                                if (i + a - (f1 / 2) < 0 || j + b - (f2 / 2) < 0
-                                        || i + a - (f1 / 2) >= u3.size(0) || j + b - (f2 / 2) >= u3.size(1)) {
-                                    result({m, n}) = 0;
-                                } else {
-                                    result({m, n}) = u3({i + a - (f1 / 2), j + b - (f2 / 2), k});
-                                }
+                            int base = (i + a - (f1 / 2)) * s1 * s2 + (j + b - (f2 / 2)) * s2;
 
-                                ++n;
+                            if (i + a - (f1 / 2) < 0 || j + b - (f2 / 2) < 0
+                                    || i + a - (f1 / 2) >= s0 || j + b - (f2 / 2) >= s1) {
+                                // do nothing
+                                z += s2;
+                            } else {
+                                for (int k = 0; k < s2; ++k) {
+                                    result_data[z] = u3_data[base + k];
+                                    ++z;
+                                }
                             }
                         }
                     }
-
-                    ++m;
 
                 }
             }
@@ -220,35 +221,36 @@ namespace autodiff {
 
             unsigned int d3 = result.vec_size() / (result.size(0) * result.size(1));
 
-            assert(u.dim() == 2);
-            assert(u.size(0) == result.size(0) * result.size(1));
-            assert(u.size(1) == f1 * f2 * d3);
-
             la::weak_tensor<double> result3 { result.data(), { result.size(0), result.size(1), d3 } };
 
-            int m = 0;
+            int z = 0;
 
-            for (int i = 0; i < result3.size(0); ++i) {
-                for (int j = 0; j < result3.size(1); ++j) {
+            double *result3_data = result3.data();
+            double const *u_data = u.data();
 
-                    int n = 0;
+            unsigned int s0 = result3.size(0);
+            unsigned int s1 = result3.size(1);
+            unsigned int s2 = result3.size(2);
+
+            for (int i = 0; i < s0; ++i) {
+                for (int j = 0; j < s1; ++j) {
 
                     for (int a = 0; a < f1; ++a) {
                         for (int b = 0; b < f2; ++b) {
-                            for (int k = 0; k < result3.size(2); ++k) {
-                                if (i + a - (f1 / 2) < 0 || j + b - (f2 / 2) < 0
-                                        || i + a - (f1 / 2) >= result3.size(0) || j + b - (f2 / 2) >= result3.size(1)) {
-                                    // do nothing
-                                } else {
-                                    result({i + a - (f1 / 2), j + b - (f2 / 2), k}) += u({m, n});
-                                }
+                            int base = (i + a - (f1 / 2)) * s1 * s2 + (j + b - (f2 / 2)) * s2;
 
-                                ++n;
+                            if (i + a - (f1 / 2) < 0 || j + b - (f2 / 2) < 0
+                                    || i + a - (f1 / 2) >= s0 || j + b - (f2 / 2) >= s1) {
+                                // do nothing
+                                z += s2;
+                            } else {
+                                for (int k = 0; k < s2; ++k) {
+                                    result3_data[base + k] += u_data[z];
+                                    ++z;
+                                }
                             }
                         }
                     }
-
-                    ++m;
 
                 }
             }
