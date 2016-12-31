@@ -381,10 +381,11 @@ namespace autodiff {
         auto& output = get_output<la::tensor_like<double>>(t);
 
         auto ch = get_child(t, 0);
+        auto& ch_t = get_output<la::tensor_like<double>>(ch);
 
         if (ch->grad_needed && ch->grad == nullptr) {
             la::tensor<double> g;
-            la::resize_as(g, output);
+            la::resize_as(g, ch_t);
             ch->grad = std::make_shared<la::tensor<double>>(std::move(g));
         }
 
@@ -414,7 +415,7 @@ namespace autodiff {
             la::resize_as(z, v);
             t->output = std::make_shared<la::tensor<double>>(z);
         } else {
-            auto& z = get_output<la::tensor<double>>(t);
+            auto& z = get_output<la::tensor_like<double>>(t);
             la::zero(z);
         }
 
@@ -428,10 +429,11 @@ namespace autodiff {
         auto& grad = get_grad<la::tensor_like<double>>(t);
 
         auto ch = get_child(t, 0);
+        auto& ch_t = get_output<la::tensor_like<double>>(ch);
 
         if (ch->grad_needed && ch->grad == nullptr) {
             la::tensor<double> g;
-            la::resize_as(g, output);
+            la::resize_as(g, ch_t);
             ch->grad = std::make_shared<la::tensor<double>>(std::move(g));
         }
 
@@ -475,9 +477,11 @@ namespace autodiff {
         auto& output = get_output<la::tensor_like<double>>(t);
 
         auto ch = get_child(t, 0);
+        auto& ch_t = get_output<la::tensor_like<double>>(ch);
+
         if (ch->grad_needed && ch->grad == nullptr) {
             la::tensor<double> g;
-            la::resize_as(g, output);
+            la::resize_as(g, ch_t);
             ch->grad = std::make_shared<la::tensor<double>>(std::move(g));
         }
 
@@ -529,10 +533,11 @@ namespace autodiff {
         assert(grad.vec_size() == output.vec_size());
 
         auto ch = get_child(t, 0);
+        auto& ch_t = get_output<la::tensor_like<double>>(ch);
 
         if (ch->grad_needed && ch->grad == nullptr) {
             la::tensor<double> g;
-            la::resize_as(g, grad);
+            la::resize_as(g, ch_t);
             ch->grad = std::make_shared<la::tensor<double>>(std::move(g));
         }
 
@@ -619,8 +624,9 @@ namespace autodiff {
             auto c = get_child(t, i);
 
             if (c->grad_needed && c->grad == nullptr) {
+                auto& c_t = get_output<la::tensor_like<double>>(c);
                 la::tensor<double> g;
-                la::resize_as(g, grad);
+                la::resize_as(g, c_t);
                 c->grad = std::make_shared<la::tensor<double>>(std::move(g));
             }
 
@@ -668,18 +674,20 @@ namespace autodiff {
         auto& grad = get_grad<la::tensor_like<double>>(t);
 
         auto u_o = get_child(t, 0);
+        auto& u_t = get_output<la::tensor_like<double>>(u_o);
 
         if (u_o->grad_needed && u_o->grad == nullptr) {
             la::tensor<double> g;
-            la::resize_as(g, grad);
+            la::resize_as(g, u_t);
             u_o->grad = std::make_shared<la::tensor<double>>(std::move(g));
         }
 
         auto v_o = get_child(t, 1);
+        auto& v_t = get_output<la::tensor_like<double>>(v_o);
 
         if (v_o->grad_needed && v_o->grad == nullptr) {
             la::tensor<double> g;
-            la::resize_as(g, grad);
+            la::resize_as(g, v_t);
             v_o->grad = std::make_shared<la::tensor<double>>(std::move(g));
         }
 
@@ -728,10 +736,11 @@ namespace autodiff {
         auto& grad = get_grad<la::tensor_like<double>>(t);
 
         auto ch = get_child(t, 0);
+        auto& ch_t = get_output<la::tensor_like<double>>(ch);
 
         if (ch->grad_needed && ch->grad == nullptr) {
             la::tensor<double> g;
-            la::resize_as(g, output);
+            la::resize_as(g, ch_t);
             ch->grad = std::make_shared<la::tensor<double>>(std::move(g));
         }
 
@@ -775,10 +784,11 @@ namespace autodiff {
         auto& grad = get_grad<la::tensor_like<double>>(t);
 
         auto ch = get_child(t, 0);
+        auto& ch_t = get_output<la::tensor_like<double>>(ch);
 
         if (ch->grad_needed && ch->grad == nullptr) {
             la::tensor<double> g;
-            la::resize_as(g, grad);
+            la::resize_as(g, ch_t);
             ch->grad = std::make_shared<la::tensor<double>>(std::move(g));
         }
 
@@ -984,7 +994,7 @@ namespace autodiff {
 
             if (c->grad_needed && c->grad == nullptr) {
                 la::tensor<double> g;
-                g.resize({v.vec_size()});
+                la::resize_as(g, v);
                 c->grad = std::make_shared<la::tensor<double>>(g);
             }
 
@@ -1227,6 +1237,49 @@ namespace autodiff {
     {
         auto t = corr_linearize(t1, t2);
         return mul(t, t2);
+    }
+
+    std::shared_ptr<op_t> dropout_mask(std::shared_ptr<op_t> t, double prob, std::default_random_engine& gen)
+    {
+        auto& g = *t->graph;
+
+        std::shared_ptr<op_t> result = g.make_node("dropout_mask");
+        result->data = std::make_shared<std::tuple<double, std::default_random_engine*>>(
+            std::make_tuple(prob, &gen));
+
+        g.add_edge(result, t);
+
+        return result;
+    }
+
+    std::shared_ptr<op_t> dropout_mask_eval(std::shared_ptr<op_t> t)
+    {
+        auto& u = get_output<la::tensor_like<double>>(get_child(t, 0));
+
+        if (t->output == nullptr) {
+            la::tensor<double> w;
+            la::resize_as(w, u);
+            t->output = std::make_shared<la::tensor<double>>(w);
+        }
+
+        double prob;
+        std::default_random_engine *gen;
+        std::tie(prob, gen) = *std::static_pointer_cast<
+            std::tuple<double, std::default_random_engine*>>(t->data);
+
+        auto& w = get_output<la::tensor_like<double>>(t);
+
+        std::bernoulli_distribution bernoulli { 1 - prob };
+
+        double *w_data = w.data();
+
+        for (int i = 0; i < w.vec_size(); ++i) {
+            w_data[i] = bernoulli(*gen);
+        }
+    }
+
+    std::shared_ptr<op_t> dropout_mask_grad(std::shared_ptr<op_t> t)
+    {
     }
 
     std::vector<std::shared_ptr<op_t>> topo_order(std::vector<std::shared_ptr<op_t>> const& roots)

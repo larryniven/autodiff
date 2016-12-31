@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <cmath>
+#include <random>
 
 namespace autodiff {
 
@@ -136,6 +137,10 @@ namespace autodiff {
 
     std::shared_ptr<op_t> corr(std::shared_ptr<op_t> const& t1, std::shared_ptr<op_t> t2);
 
+    std::shared_ptr<op_t> dropout_mask(std::shared_ptr<op_t> t, double prob, std::default_random_engine& gen);
+    std::shared_ptr<op_t> dropout_mask_eval(std::shared_ptr<op_t> t);
+    std::shared_ptr<op_t> dropout_mask_grad(std::shared_ptr<op_t> t);
+
     std::vector<std::shared_ptr<op_t>> topo_order(std::vector<std::shared_ptr<op_t>> const& roots);
     std::vector<std::shared_ptr<op_t>> topo_order(std::shared_ptr<op_t> const& root);
 
@@ -190,6 +195,7 @@ namespace autodiff {
         { "reshape", reshape_eval },
         { "rep_row_to", rep_row_to_eval },
         { "corr_linearize", corr_linearize_eval },
+        { "dropout_mask", dropout_mask_eval },
     };
 
     static std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> grad_funcs {
@@ -213,6 +219,7 @@ namespace autodiff {
         { "reshape", reshape_grad },
         { "rep_row_to", rep_row_to_grad },
         { "corr_linearize", corr_linearize_grad },
+        { "dropout_mask", dropout_mask_grad },
     };
 
 }
