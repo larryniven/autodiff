@@ -330,7 +330,7 @@ namespace autodiff {
             u_o->grad = std::make_shared<la::tensor<double>>(std::move(g));
         }
 
-        if (u_o->grad_needed && v_o->grad == nullptr) {
+        if (v_o->grad_needed && v_o->grad == nullptr) {
             la::tensor<double> g;
             la::resize_as(g, v);
             v_o->grad = std::make_shared<la::tensor<double>>(std::move(g));
@@ -1244,6 +1244,7 @@ namespace autodiff {
         auto& g = *t->graph;
 
         std::shared_ptr<op_t> result = g.make_node("dropout_mask");
+
         result->data = std::make_shared<std::tuple<double, std::default_random_engine*>>(
             std::make_tuple(prob, &gen));
 
@@ -1252,7 +1253,7 @@ namespace autodiff {
         return result;
     }
 
-    std::shared_ptr<op_t> dropout_mask_eval(std::shared_ptr<op_t> t)
+    void dropout_mask_eval(std::shared_ptr<op_t> t)
     {
         auto& u = get_output<la::tensor_like<double>>(get_child(t, 0));
 
@@ -1274,11 +1275,11 @@ namespace autodiff {
         double *w_data = w.data();
 
         for (int i = 0; i < w.vec_size(); ++i) {
-            w_data[i] = bernoulli(*gen);
+            w_data[i] = bernoulli(*gen) / (1 - prob);
         }
     }
 
-    std::shared_ptr<op_t> dropout_mask_grad(std::shared_ptr<op_t> t)
+    void dropout_mask_grad(std::shared_ptr<op_t> t)
     {
     }
 

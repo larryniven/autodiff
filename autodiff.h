@@ -138,8 +138,8 @@ namespace autodiff {
     std::shared_ptr<op_t> corr(std::shared_ptr<op_t> const& t1, std::shared_ptr<op_t> t2);
 
     std::shared_ptr<op_t> dropout_mask(std::shared_ptr<op_t> t, double prob, std::default_random_engine& gen);
-    std::shared_ptr<op_t> dropout_mask_eval(std::shared_ptr<op_t> t);
-    std::shared_ptr<op_t> dropout_mask_grad(std::shared_ptr<op_t> t);
+    void dropout_mask_eval(std::shared_ptr<op_t> t);
+    void dropout_mask_grad(std::shared_ptr<op_t> t);
 
     std::vector<std::shared_ptr<op_t>> topo_order(std::vector<std::shared_ptr<op_t>> const& roots);
     std::vector<std::shared_ptr<op_t>> topo_order(std::shared_ptr<op_t> const& root);

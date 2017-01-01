@@ -435,6 +435,95 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
         ebt::assert_equals(36, grad_u({1, 1, 1}));
 
     }},
+
+    {"test-dropout-mask", []() {
+        la::vector<double> u {
+            0, 0, 0,
+            0, 0, 0
+        };
+
+        la::weak_tensor<double> u_t { u.data(), {2, 3} };
+
+        std::default_random_engine gen;
+
+        autodiff::computation_graph g;
+
+        auto op = autodiff::dropout_mask(g.var(u_t), 0.0, gen);
+
+        autodiff::eval(op, autodiff::eval_funcs);
+
+        auto& result = autodiff::get_output<la::tensor_like<double>>(op);
+
+        ebt::assert_equals(6, result.vec_size());
+        ebt::assert_equals(2, result.dim());
+        ebt::assert_equals(2, result.size(0));
+        ebt::assert_equals(3, result.size(1));
+        ebt::assert_equals(1, result({0, 0}));
+        ebt::assert_equals(1, result({0, 1}));
+        ebt::assert_equals(1, result({0, 2}));
+
+    }},
+
+    {"test-emul", []() {
+        la::vector<double> u {
+            1, 2, 3,
+            4, 5, 6
+        };
+
+        la::vector<double> v {
+            7, 8, 9,
+            10, 11, 12
+        };
+
+        la::weak_tensor<double> u_t { u.data(), {2, 3} };
+        la::weak_tensor<double> v_t { v.data(), {2, 3} };
+
+        autodiff::computation_graph g;
+
+        auto op = autodiff::emul(g.var(u_t), g.var(v_t));
+
+        autodiff::eval(op, autodiff::eval_funcs);
+
+        auto& result = autodiff::get_output<la::tensor_like<double>>(op);
+
+        ebt::assert_equals(2, result.dim());
+        ebt::assert_equals(2, result.size(0));
+        ebt::assert_equals(3, result.size(1));
+        ebt::assert_equals(7, result({0, 0}));
+        ebt::assert_equals(16, result({0, 1}));
+        ebt::assert_equals(27, result({0, 2}));
+        ebt::assert_equals(40, result({1, 0}));
+
+    }},
+
+    {"test-emul-dropout", []() {
+        la::vector<double> u {
+            1, 2, 3,
+            4, 5, 6
+        };
+
+        la::weak_tensor<double> u_t { u.data(), {2, 3} };
+
+        std::default_random_engine gen;
+
+        autodiff::computation_graph g;
+
+        auto u_op = g.var(u_t);
+        auto op = autodiff::emul(u_op, autodiff::dropout_mask(u_op, 0.0, gen));
+
+        autodiff::eval(op, autodiff::eval_funcs);
+
+        auto& result = autodiff::get_output<la::tensor_like<double>>(op);
+
+        ebt::assert_equals(2, result.dim());
+        ebt::assert_equals(2, result.size(0));
+        ebt::assert_equals(3, result.size(1));
+        ebt::assert_equals(1, result({0, 0}));
+        ebt::assert_equals(2, result({0, 1}));
+        ebt::assert_equals(3, result({0, 2}));
+        ebt::assert_equals(4, result({1, 0}));
+
+    }},
 };
 
 int main()
