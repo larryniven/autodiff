@@ -127,6 +127,11 @@ namespace autodiff {
     void reshape_eval(std::shared_ptr<op_t> t);
     void reshape_grad(std::shared_ptr<op_t> t);
 
+    std::shared_ptr<op_t> resize_as(std::shared_ptr<op_t> const& t1, std::shared_ptr<op_t> const& t2,
+        double value = 0);
+    void resize_as_eval(std::shared_ptr<op_t> t);
+    void resize_as_grad(std::shared_ptr<op_t> t);
+
     std::shared_ptr<op_t> rep_row_to(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2);
     void rep_row_to_eval(std::shared_ptr<op_t> t);
     void rep_row_to_grad(std::shared_ptr<op_t> t);
@@ -137,7 +142,8 @@ namespace autodiff {
 
     std::shared_ptr<op_t> corr(std::shared_ptr<op_t> const& t1, std::shared_ptr<op_t> t2);
 
-    std::shared_ptr<op_t> dropout_mask(std::shared_ptr<op_t> t, double prob, std::default_random_engine& gen);
+    std::shared_ptr<op_t> dropout_mask(std::shared_ptr<op_t> t, double prob,
+        std::default_random_engine& gen);
     void dropout_mask_eval(std::shared_ptr<op_t> t);
     void dropout_mask_grad(std::shared_ptr<op_t> t);
 
@@ -193,6 +199,7 @@ namespace autodiff {
         { "col_cat", col_cat_eval },
         { "row_at", row_at_eval },
         { "reshape", reshape_eval },
+        { "resize_as", resize_as_eval },
         { "rep_row_to", rep_row_to_eval },
         { "corr_linearize", corr_linearize_eval },
         { "dropout_mask", dropout_mask_eval },
@@ -217,6 +224,7 @@ namespace autodiff {
         { "col_cat", col_cat_grad },
         { "row_at", row_at_grad },
         { "reshape", reshape_grad },
+        { "resize_as", resize_as_grad },
         { "rep_row_to", rep_row_to_grad },
         { "corr_linearize", corr_linearize_grad },
         { "dropout_mask", dropout_mask_grad },
