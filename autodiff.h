@@ -127,8 +127,7 @@ namespace autodiff {
     void reshape_eval(std::shared_ptr<op_t> t);
     void reshape_grad(std::shared_ptr<op_t> t);
 
-    std::shared_ptr<op_t> resize_as(std::shared_ptr<op_t> const& t1, std::shared_ptr<op_t> const& t2,
-        double value = 0);
+    std::shared_ptr<op_t> resize_as(std::shared_ptr<op_t> const& t, double value = 0);
     void resize_as_eval(std::shared_ptr<op_t> t);
     void resize_as_grad(std::shared_ptr<op_t> t);
 

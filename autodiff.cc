@@ -1114,37 +1114,32 @@ namespace autodiff {
         }
     }
 
-    std::shared_ptr<op_t> resize_as(std::shared_ptr<op_t> const& t1, std::shared_ptr<op_t> const& t2,
-        double value)
+    std::shared_ptr<op_t> resize_as(std::shared_ptr<op_t> const& t, double value)
     {
-        auto& g = *t1->graph;
+        auto& g = *t->graph;
 
         std::shared_ptr<op_t> result = g.make_node("resize_as");
     
-        t1->data = std::make_shared<double>(value);
+        result->data = std::make_shared<double>(value);
 
-        g.add_edge(result, t1);
-        g.add_edge(result, t2);
+        g.add_edge(result, t);
     
         return result;
     }
 
     void resize_as_eval(std::shared_ptr<op_t> t)
     {
-        auto u_op = get_child(t, 0);
-        auto v_op = get_child(t, 1);
+        auto c = get_child(t, 0);
 
-        assert(v_op->output != nullptr);
+        if (t->output == nullptr) {
+            auto& c_t = get_output<la::tensor_like<double>>(c);
 
-        if (u_op->output == nullptr) {
-            auto& v = get_output<la::tensor_like<double>>(v_op);
-
-            double value = *std::static_pointer_cast<double>(u_op->data);
+            double value = *std::static_pointer_cast<double>(t->data);
 
             la::tensor<double> w;
-            la::resize_as(w, v, value);
+            la::resize_as(w, c_t, value);
 
-            u_op->output = std::make_shared<la::tensor<double>>(w);
+            t->output = std::make_shared<la::tensor<double>>(w);
         }
     }
 
