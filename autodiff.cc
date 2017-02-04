@@ -1316,7 +1316,8 @@ namespace autodiff {
     {
     }
 
-    std::vector<std::shared_ptr<op_t>> topo_order(std::vector<std::shared_ptr<op_t>> const& roots)
+    std::vector<std::shared_ptr<op_t>> topo_order(std::vector<std::shared_ptr<op_t>> const& roots,
+        std::vector<std::shared_ptr<op_t>> const& boundaries)
     {
         enum class action_t {
             color_grey,
@@ -1328,6 +1329,9 @@ namespace autodiff {
             grey,
             black
         };
+
+        std::unordered_set<std::shared_ptr<op_t>> boundary_set
+            { boundaries.begin(), boundaries.end() };
 
         auto& g = *roots.front()->graph;
 
@@ -1362,6 +1366,10 @@ namespace autodiff {
                 for (int i = 0; i < g.adj[t->id].size(); ++i) {
                     auto c = get_child(t, i);
 
+                    if (ebt::in(c, boundary_set)) {
+                        continue;
+                    }
+
                     if (color[c->id] == color_t::white) {
                         stack.push_back(std::make_pair(action_t::color_grey, c));
                     }
@@ -1383,6 +1391,11 @@ namespace autodiff {
         std::reverse(order.begin(), order.end());
 
         return order;
+    }
+
+    std::vector<std::shared_ptr<op_t>> topo_order(std::vector<std::shared_ptr<op_t>> const& roots)
+    {
+        return topo_order(roots, std::vector<std::shared_ptr<autodiff::op_t>>{});
     }
 
     std::vector<std::shared_ptr<op_t>> topo_order(std::shared_ptr<op_t> const& root)
