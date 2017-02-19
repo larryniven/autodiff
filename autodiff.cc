@@ -1406,6 +1406,11 @@ namespace autodiff {
     {
     }
 
+    std::vector<std::shared_ptr<op_t>> natural_topo_order(computation_graph const& graph)
+    {
+        return graph.vertices;
+    }
+
     std::vector<std::shared_ptr<op_t>> topo_order(std::vector<std::shared_ptr<op_t>> const& roots,
         std::vector<std::shared_ptr<op_t>> const& boundaries)
     {

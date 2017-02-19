@@ -148,6 +148,8 @@ namespace autodiff {
     void dropout_mask_eval(std::shared_ptr<op_t> t);
     void dropout_mask_grad(std::shared_ptr<op_t> t);
 
+    std::vector<std::shared_ptr<op_t>> natural_topo_order(computation_graph const& graph);
+
     std::vector<std::shared_ptr<op_t>> topo_order(std::vector<std::shared_ptr<op_t>> const& roots,
         std::vector<std::shared_ptr<op_t>> const& boundaries);
     std::vector<std::shared_ptr<op_t>> topo_order(std::vector<std::shared_ptr<op_t>> const& roots);
