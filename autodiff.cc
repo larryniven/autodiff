@@ -37,10 +37,6 @@ namespace autodiff {
 
     std::shared_ptr<op_t> computation_graph::var()
     {
-        if (!lazy) {
-            throw std::logic_error("var has to be assigned in eager mode.");
-        }
-
         return make_node("var");
     }
 
