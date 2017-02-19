@@ -28,6 +28,8 @@ namespace autodiff {
     };
 
     struct computation_graph {
+        bool lazy;
+
         std::vector<std::shared_ptr<op_t>> vertices; 
         std::vector<std::vector<int>> adj;
 

@@ -18,7 +18,7 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
 
         auto t = autodiff::mul(x_var, A_var);
 
-        autodiff::eval(t, autodiff::eval_funcs);
+        // autodiff::eval(t, autodiff::eval_funcs);
 
         la::tensor_like<double>& result = autodiff::get_output<la::tensor_like<double>>(t);
 
@@ -71,7 +71,7 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
         autodiff::computation_graph g;
 
         auto t = autodiff::logsoftmax(g.var(la::weak_tensor<double>{ x }));
-        autodiff::eval(t, autodiff::eval_funcs);
+        // autodiff::eval(t, autodiff::eval_funcs);
         la::weak_vector<double> result = autodiff::get_output<la::tensor_like<double>>(t).as_vector();
 
         ebt::assert_equals(expected(0), result(0));
@@ -153,7 +153,7 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
 
         auto c = autodiff::corr(g.var(u_t), g.var(v_t));
 
-        autodiff::eval(c, autodiff::eval_funcs);
+        // autodiff::eval(c, autodiff::eval_funcs);
 
         auto& o = autodiff::get_output<la::tensor_like<double>>(c);
 
@@ -199,7 +199,7 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
         auto var_u = g.var(u_t);
         auto var_v = g.var(v_t);
         auto c = autodiff::corr(var_u, var_v);
-        autodiff::eval(c, autodiff::eval_funcs);
+        // autodiff::eval(c, autodiff::eval_funcs);
 
         auto& o = autodiff::get_output<la::tensor<double>>(c);
         double tmp = o({0, 0, 0});
@@ -248,7 +248,7 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
 
         auto c = autodiff::corr(g.var(t), g.var(f));
 
-        autodiff::eval(c, autodiff::eval_funcs);
+        // autodiff::eval(c, autodiff::eval_funcs);
 
         auto& o = autodiff::get_output<la::tensor_like<double>>(c);
 
@@ -300,7 +300,7 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
         auto var_v = g.var(v_t);
         auto c = autodiff::corr(var_u, var_v);
 
-        autodiff::eval(c, autodiff::eval_funcs);
+        // autodiff::eval(c, autodiff::eval_funcs);
 
         la::weak_tensor<double> grad_t { grad.data(), {5, 5, 1} };
         c->grad = std::make_shared<la::weak_tensor<double>>(grad_t);
@@ -353,7 +353,7 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
 
         auto c = autodiff::corr(g.var(t), g.var(f));
 
-        autodiff::eval(c, autodiff::eval_funcs);
+        // autodiff::eval(c, autodiff::eval_funcs);
 
         auto& o = autodiff::get_output<la::tensor_like<double>>(c);
 
@@ -417,7 +417,7 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
         auto var_v = g.var(v_t);
         auto c = autodiff::corr(var_u, var_v);
 
-        autodiff::eval(c, autodiff::eval_funcs);
+        // autodiff::eval(c, autodiff::eval_funcs);
 
         la::weak_tensor<double> grad_t { grad.data(), {5, 5, 2} };
         c->grad = std::make_shared<la::weak_tensor<double>>(grad_t);
@@ -450,7 +450,7 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
 
         auto op = autodiff::dropout_mask(g.var(u_t), 0.0, gen);
 
-        autodiff::eval(op, autodiff::eval_funcs);
+        // autodiff::eval(op, autodiff::eval_funcs);
 
         auto& result = autodiff::get_output<la::tensor_like<double>>(op);
 
@@ -482,7 +482,7 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
 
         auto op = autodiff::emul(g.var(u_t), g.var(v_t));
 
-        autodiff::eval(op, autodiff::eval_funcs);
+        // autodiff::eval(op, autodiff::eval_funcs);
 
         auto& result = autodiff::get_output<la::tensor_like<double>>(op);
 
@@ -511,7 +511,7 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
         auto u_op = g.var(u_t);
         auto op = autodiff::emul(u_op, autodiff::dropout_mask(u_op, 0.0, gen));
 
-        autodiff::eval(op, autodiff::eval_funcs);
+        // autodiff::eval(op, autodiff::eval_funcs);
 
         auto& result = autodiff::get_output<la::tensor_like<double>>(op);
 
