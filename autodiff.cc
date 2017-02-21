@@ -1545,6 +1545,23 @@ namespace autodiff {
         grad(order, funcs);
     }
 
+    void guarded_grad(std::vector<std::shared_ptr<op_t>> const& topo_order,
+        std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> const& funcs)
+    {
+        for (int i = 0; i < topo_order.size(); ++i) {
+            if (topo_order[i]->grad != nullptr) {
+                eval_vertex(topo_order[i], funcs);
+            }
+        }
+    }
+
+    void guarded_grad(std::shared_ptr<op_t> const& root,
+        std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> const& funcs)
+    {
+        auto order = topo_order(root);
+        guarded_grad(order, funcs);
+    }
+
     void clear_grad(std::vector<std::shared_ptr<op_t>> const& topo_order)
     {
         for (auto& t: topo_order) {

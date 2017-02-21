@@ -170,6 +170,12 @@ namespace autodiff {
     void grad(std::shared_ptr<op_t> const& root,
         std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> const& funcs);
 
+    void guarded_grad(std::vector<std::shared_ptr<op_t>> const& topo_order,
+        std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> const& funcs);
+
+    void guarded_grad(std::shared_ptr<op_t> const& root,
+        std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> const& funcs);
+
     void clear_grad(std::vector<std::shared_ptr<op_t>> const& topo_order);
     void clear_grad(std::shared_ptr<op_t> const& root);
 
