@@ -1408,7 +1408,11 @@ namespace autodiff {
 
     std::vector<std::shared_ptr<op_t>> natural_topo_order(computation_graph const& graph)
     {
-        return graph.vertices;
+        std::vector<std::shared_ptr<op_t>> result;
+        for (int i = graph.vertices.size() - 1; i >= 0; --i) {
+            result.push_back(graph.vertices.at(i));
+        }
+        return result;
     }
 
     std::vector<std::shared_ptr<op_t>> topo_order(std::vector<std::shared_ptr<op_t>> const& roots,
@@ -1533,6 +1537,14 @@ namespace autodiff {
     {
         for (int i = 0; i < topo_order.size(); ++i) {
             if (topo_order[i]->grad_needed) {
+                if (topo_order[i]->grad == nullptr) {
+                    for (int j = 0; j <= i; ++j) {
+                        std::cout << topo_order[j]->name << std::endl;
+                    }
+
+                    throw std::logic_error { "no grad" };
+                }
+
                 eval_vertex(topo_order[i], funcs);
             }
         }
