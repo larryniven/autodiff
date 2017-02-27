@@ -1366,7 +1366,7 @@ namespace autodiff {
         }
 
         la::tensor_like<double>& w = get_output<la::tensor_like<double>>(t);
-        op::corr_linearize(w, u, v.size(0), v.size(1));
+        la::corr_linearize(w, u, v.size(0), v.size(1));
     }
 
     void corr_linearize_grad(std::shared_ptr<op_t> t)
