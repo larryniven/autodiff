@@ -748,7 +748,47 @@ namespace autodiff {
             la::isub(v_grad, grad);
         }
     }
+
+    std::shared_ptr<op_t> norm(std::shared_ptr<op_t> t)
+    {
+        auto& g = *t->graph;
+
+        std::shared_ptr<op_t> result = g.make_node("norm");
+        g.add_edge(result, t);
     
+        if (!g.lazy) {
+            eval_vertex(result, autodiff::eval_funcs);
+        }
+
+        return result;
+    }
+
+    void norm_eval(std::shared_ptr<op_t> t)
+    {
+        auto ch = get_child(t, 0);
+        auto& v = autodiff::get_output<la::tensor<double>>(ch);
+        t->output = std::make_shared<double>(la::norm(v));
+    }
+
+    void norm_grad(std::shared_ptr<op_t> t)
+    {
+        auto ch = get_child(t, 0);
+        auto& v = autodiff::get_output<la::tensor<double>>(ch);
+
+        if (ch->grad == nullptr) {
+            la::tensor<double> z;
+            z.resize(v.sizes());
+            ch->grad = std::make_shared<la::tensor<double>>(z);
+        }
+
+        double n = autodiff::get_output<double>(t);
+        if (n != 0.0) {
+            double g = autodiff::get_grad<double>(t);
+            auto& z = autodiff::get_grad<la::tensor<double>>(ch);
+            la::axpy(z, g / n, v);
+        }
+    }
+
     std::shared_ptr<op_t> softmax(std::shared_ptr<op_t> t)
     {
         auto& g = *t->graph;

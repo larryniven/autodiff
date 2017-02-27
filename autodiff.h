@@ -101,6 +101,10 @@ namespace autodiff {
     void sub_eval(std::shared_ptr<op_t> t);
     void sub_grad(std::shared_ptr<op_t> t);
 
+    std::shared_ptr<op_t> norm(std::shared_ptr<op_t> t);
+    void norm_eval(std::shared_ptr<op_t> t);
+    void norm_grad(std::shared_ptr<op_t> t);
+
     std::shared_ptr<op_t> softmax(std::shared_ptr<op_t> t);
     void softmax_eval(std::shared_ptr<op_t> t);
     void softmax_grad(std::shared_ptr<op_t> t);
@@ -203,6 +207,7 @@ namespace autodiff {
         { "var", var_eval },
         { "add", add_eval },
         { "sub", sub_eval },
+        { "norm", norm_eval },
         { "softmax", softmax_eval },
         { "logsoftmax", logsoftmax_eval },
         { "dot", dot_eval },
@@ -228,6 +233,7 @@ namespace autodiff {
         { "var", var_grad },
         { "add", add_grad },
         { "sub", sub_grad },
+        { "norm", norm_grad },
         { "softmax", softmax_grad },
         { "logsoftmax", logsoftmax_grad },
         { "dot", dot_grad },
