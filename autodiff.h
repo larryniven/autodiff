@@ -147,6 +147,14 @@ namespace autodiff {
 
     std::shared_ptr<op_t> corr(std::shared_ptr<op_t> const& t1, std::shared_ptr<op_t> t2);
 
+    std::shared_ptr<op_t> seg_max(std::shared_ptr<op_t> t);
+    void seg_max_eval(std::shared_ptr<op_t> t);
+    void seg_max_grad(std::shared_ptr<op_t> t);
+
+    std::shared_ptr<op_t> high_pass_k(std::shared_ptr<op_t> t, int k);
+    void high_pass_k_eval(std::shared_ptr<op_t> t);
+    void high_pass_k_grad(std::shared_ptr<op_t> t);
+
     std::shared_ptr<op_t> dropout_mask(std::shared_ptr<op_t> t, double prob,
         std::default_random_engine& gen);
     void dropout_mask_eval(std::shared_ptr<op_t> t);
@@ -218,6 +226,8 @@ namespace autodiff {
         { "resize_as", resize_as_eval },
         { "rep_row_to", rep_row_to_eval },
         { "corr_linearize", corr_linearize_eval },
+        { "seg-max", seg_max_eval },
+        { "high-pass-k", high_pass_k_eval },
         { "dropout_mask", dropout_mask_eval },
     };
 
@@ -244,6 +254,8 @@ namespace autodiff {
         { "resize_as", resize_as_grad },
         { "rep_row_to", rep_row_to_grad },
         { "corr_linearize", corr_linearize_grad },
+        { "seg-max", seg_max_grad },
+        { "high-pass-k", high_pass_k_grad },
         { "dropout_mask", dropout_mask_grad },
     };
 

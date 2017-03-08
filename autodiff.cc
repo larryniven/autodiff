@@ -1398,6 +1398,150 @@ namespace autodiff {
         return mul(t, t2);
     }
 
+    std::shared_ptr<op_t> seg_max(std::shared_ptr<op_t> t)
+    {
+        auto& g = *t->graph;
+    
+        std::shared_ptr<op_t> result = g.make_node("seg-max");
+    
+        g.add_edge(result, t);
+    
+        if (!g.lazy) {
+            eval_vertex(result, autodiff::eval_funcs);
+        }
+    
+        return result;
+    }
+    
+    void seg_max_eval(std::shared_ptr<op_t> t)
+    {
+        auto ch = get_child(t, 0);
+        auto& v = get_output<la::tensor_like<double>>(ch);
+    
+        if (t->output == nullptr) {
+            double inf = std::numeric_limits<double>::infinity();
+            la::tensor<double> z;
+            z.resize({v.size(2)}, -inf);
+            t->output = std::make_shared<la::tensor<double>>(z);
+        }
+    
+        auto& z = get_output<la::tensor_like<double>>(t);
+        std::vector<std::pair<int, int>> argmax;
+        argmax.resize(z.size(0));
+    
+        for (int i = 0; i < v.size(0); ++i) {
+            for (int j = 0; j < v.size(1); ++j) {
+                for (int c = 0; c < v.size(2); ++c) {
+                    if (v({i, j, c}) > z({c})) {
+                        argmax[c] = std::make_pair(i, j);
+                        z({c}) = v({i, j, c});
+                    }
+                }
+            }
+        }
+    
+        t->data = std::make_shared<std::vector<std::pair<int, int>>>(argmax);
+    }
+    
+    void seg_max_grad(std::shared_ptr<op_t> t)
+    {
+        auto ch = get_child(t, 0);
+        auto& v = get_output<la::tensor_like<double>>(ch);
+
+        if (ch->grad == nullptr) {
+            la::tensor<double> z;
+            z.resize(v.sizes());
+            ch->grad = std::make_shared<la::tensor<double>>(z);
+        }
+
+        auto& g = get_grad<la::tensor_like<double>>(t);
+        auto& z = get_grad<la::tensor_like<double>>(ch);
+
+        auto& argmin = *std::static_pointer_cast<std::vector<std::pair<int, int>>>(t->data);
+
+        for (int c = 0; c < argmin.size(); ++c) {
+            z({argmin[c].first, argmin[c].second, c}) += g({c});
+        }
+    }
+
+    std::shared_ptr<op_t> high_pass_k(std::shared_ptr<op_t> t, int k)
+    {
+        auto& g = *t->graph;
+    
+        std::shared_ptr<op_t> result = g.make_node("high-pass-k");
+
+        result->data = std::make_shared<std::pair<int, std::vector<int>>>(
+            std::make_pair(k, std::vector<int>()));
+    
+        g.add_edge(result, t);
+    
+        if (!g.lazy) {
+            eval_vertex(result, autodiff::eval_funcs);
+        }
+    
+        return result;
+    }
+
+    void high_pass_k_eval(std::shared_ptr<op_t> t)
+    {
+        auto ch = get_child(t, 0);
+        auto& v = get_output<la::tensor_like<double>>(ch);
+
+        int k = std::static_pointer_cast<std::pair<int, std::vector<int>>>(t->data)->first;
+
+        if (t->output == nullptr) {
+            la::tensor<double> z;
+            z.resize(v.sizes());
+            t->output = std::make_shared<la::tensor<double>>(z);
+        }
+
+        std::vector<std::pair<double, int>> heap;
+        for (int i = 0; i < v.vec_size(); ++i) {
+            heap.push_back(std::make_pair(v.data()[i], i));
+        }
+
+        auto less = [](std::pair<double, int> const& p1, std::pair<double, int> const& p2) {
+            return p1.first < p2.first;
+        };
+
+        std::vector<int> indices;
+
+        std::make_heap(heap.begin(), heap.end(), less);
+
+        auto& z = get_output<la::tensor<double>>(t);
+
+        for (int i = 0; i < k; ++i) {
+            std::pop_heap(heap.begin(), heap.end(), less);
+            auto& p = heap.back();
+            z({p.second}) = p.first;
+            indices.push_back(p.second);
+            heap.pop_back();
+        }
+
+        std::static_pointer_cast<std::pair<int, std::vector<int>>>(t->data)->second = indices;
+    }
+
+    void high_pass_k_grad(std::shared_ptr<op_t> t)
+    {
+        auto ch = get_child(t, 0);
+        auto& v = get_output<la::tensor_like<double>>(ch);
+
+        if (ch->grad == nullptr) {
+            la::tensor<double> z;
+            z.resize(v.sizes());
+            ch->grad = std::make_shared<la::tensor<double>>(z);
+        }
+
+        auto& g = get_grad<la::tensor_like<double>>(t);
+        auto& z = get_grad<la::tensor_like<double>>(ch);
+
+        std::vector<int>& indices = std::static_pointer_cast<std::pair<int, std::vector<int>>>(t->data)->second;
+
+        for (auto& i: indices) {
+            z.data()[i] += g.data()[i];
+        }
+    }
+
     std::shared_ptr<op_t> dropout_mask(std::shared_ptr<op_t> t, double prob, std::default_random_engine& gen)
     {
         auto& g = *t->graph;
