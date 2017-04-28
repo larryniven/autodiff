@@ -17,12 +17,12 @@ namespace autodiff {
                 la::gpu::matrix_like<double> const& a,
                 la::gpu::vector_like<double> const& x);
 
-            void logistic(la::gpu::vector_like<double>& u,
-                la::gpu::vector_like<double> const& v);
+            void logistic(la::gpu::tensor_like<double>& u,
+                la::gpu::tensor_like<double> const& v);
 
-            void ilogistic_grad(la::gpu::vector_like<double>& result,
-                la::gpu::vector_like<double> const& grad,
-                la::gpu::vector_like<double> const& output);
+            void ilogistic_grad(la::gpu::tensor_like<double>& result,
+                la::gpu::tensor_like<double> const& grad,
+                la::gpu::tensor_like<double> const& output);
 
             void relu(la::gpu::vector_like<double>& u,
                 la::gpu::vector_like<double> const& v);
@@ -31,12 +31,12 @@ namespace autodiff {
                 la::gpu::vector_like<double> const& grad,
                 la::gpu::vector_like<double> const& output);
 
-            void tanh(la::gpu::vector_like<double>& u,
-                la::gpu::vector_like<double> const& v);
+            void tanh(la::gpu::tensor_like<double>& u,
+                la::gpu::tensor_like<double> const& v);
 
-            void itanh_grad(la::gpu::vector_like<double>& result,
-                la::gpu::vector_like<double> const& grad,
-                la::gpu::vector_like<double> const& output);
+            void itanh_grad(la::gpu::tensor_like<double>& result,
+                la::gpu::tensor_like<double> const& grad,
+                la::gpu::tensor_like<double> const& output);
 
             void softmax(la::gpu::vector_like<double>& u,
                 la::gpu::vector_like<double> const& v);
@@ -45,12 +45,12 @@ namespace autodiff {
                 la::gpu::vector_like<double> const& grad,
                 la::gpu::vector_like<double> const& output);
 
-            void logsoftmax(la::gpu::vector_like<double>& u,
-                la::gpu::vector_like<double> const& v);
+            void logsoftmax(la::gpu::tensor_like<double>& u,
+                la::gpu::tensor_like<double> const& v);
 
-            void ilogsoftmax_grad(la::gpu::vector_like<double>& result,
-                la::gpu::vector_like<double> const& grad,
-                la::gpu::vector_like<double> const& output);
+            void ilogsoftmax_grad(la::gpu::tensor_like<double>& result,
+                la::gpu::tensor_like<double> const& grad,
+                la::gpu::tensor_like<double> const& output);
         }
     }
 }

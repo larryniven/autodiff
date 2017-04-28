@@ -8,6 +8,19 @@
 
 namespace autodiff {
 
+    interpreter::interpreter()
+        : eval_funcs(autodiff::eval_funcs)
+        , grad_funcs(autodiff::grad_funcs)
+    {
+    }
+
+    interpreter& interpreter::get_instance()
+    {
+        static interpreter instance;
+
+        return instance;
+    }
+
     op_t::op_t()
         : output(nullptr), grad(nullptr)
     {}
@@ -80,7 +93,7 @@ namespace autodiff {
         g.add_edge(result, t2);
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::eval_funcs);
+            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
 
         return result;
@@ -158,7 +171,7 @@ namespace autodiff {
         g.add_edge(result, t2);
     
         if (!g.lazy) {
-            eval_vertex(result, autodiff::eval_funcs);
+            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
 
         return result;
@@ -229,7 +242,7 @@ namespace autodiff {
         g.add_edge(result, t2);
     
         if (!g.lazy) {
-            eval_vertex(result, autodiff::eval_funcs);
+            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
 
         return result;
@@ -308,7 +321,7 @@ namespace autodiff {
         g.add_edge(result, t2);
     
         if (!g.lazy) {
-            eval_vertex(result, autodiff::eval_funcs);
+            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
 
         return result;
@@ -374,7 +387,7 @@ namespace autodiff {
         g.add_edge(result, input);
     
         if (!g.lazy) {
-            eval_vertex(result, autodiff::eval_funcs);
+            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
 
         return result;
@@ -426,7 +439,7 @@ namespace autodiff {
         g.add_edge(result, input);
     
         if (!g.lazy) {
-            eval_vertex(result, autodiff::eval_funcs);
+            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
 
         return result;
@@ -478,7 +491,7 @@ namespace autodiff {
         g.add_edge(result, input);
     
         if (!g.lazy) {
-            eval_vertex(result, autodiff::eval_funcs);
+            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
 
         return result;
@@ -530,7 +543,7 @@ namespace autodiff {
         g.add_edge(result, input);
     
         if (!g.lazy) {
-            eval_vertex(result, autodiff::eval_funcs);
+            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
 
         return result;
@@ -599,7 +612,7 @@ namespace autodiff {
         }
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::eval_funcs);
+            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
 
         return result;
@@ -615,7 +628,7 @@ namespace autodiff {
         g.add_edge(result, t2);
     
         if (!g.lazy) {
-            eval_vertex(result, autodiff::eval_funcs);
+            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
 
         return result;
@@ -690,7 +703,7 @@ namespace autodiff {
         g.add_edge(result, t2);
     
         if (!g.lazy) {
-            eval_vertex(result, autodiff::eval_funcs);
+            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
 
         return result;
@@ -757,7 +770,7 @@ namespace autodiff {
         g.add_edge(result, t);
     
         if (!g.lazy) {
-            eval_vertex(result, autodiff::eval_funcs);
+            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
 
         return result;
@@ -797,7 +810,7 @@ namespace autodiff {
         g.add_edge(result, t);
     
         if (!g.lazy) {
-            eval_vertex(result, autodiff::eval_funcs);
+            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
 
         return result;
@@ -849,7 +862,7 @@ namespace autodiff {
         g.add_edge(result, t);
     
         if (!g.lazy) {
-            eval_vertex(result, autodiff::eval_funcs);
+            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
 
         return result;
@@ -892,7 +905,7 @@ namespace autodiff {
             op::ilogsoftmax_grad(result, grad, output);
         }
     }
-    
+
     std::shared_ptr<op_t> dot(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2)
     {
         auto& g = *t1->graph;
@@ -903,7 +916,7 @@ namespace autodiff {
         g.add_edge(result, t2);
     
         if (!g.lazy) {
-            eval_vertex(result, autodiff::eval_funcs);
+            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
 
         return result;
@@ -965,7 +978,7 @@ namespace autodiff {
         }
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::eval_funcs);
+            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
 
         return result;
@@ -1046,7 +1059,7 @@ namespace autodiff {
         }
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::eval_funcs);
+            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
 
         return result;
@@ -1126,7 +1139,7 @@ namespace autodiff {
         g.add_edge(result, t);
     
         if (!g.lazy) {
-            eval_vertex(result, autodiff::eval_funcs);
+            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
 
         return result;
@@ -1181,7 +1194,7 @@ namespace autodiff {
         g.add_edge(result, t);
     
         if (!g.lazy) {
-            eval_vertex(result, autodiff::eval_funcs);
+            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
 
         return result;
@@ -1239,7 +1252,7 @@ namespace autodiff {
         g.add_edge(result, t);
     
         if (!g.lazy) {
-            eval_vertex(result, autodiff::eval_funcs);
+            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
 
         return result;
@@ -1275,7 +1288,7 @@ namespace autodiff {
         g.add_edge(result, t2);
     
         if (!g.lazy) {
-            eval_vertex(result, autodiff::eval_funcs);
+            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
 
         return result;
@@ -1346,7 +1359,7 @@ namespace autodiff {
         g.add_edge(result, t2);
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::eval_funcs);
+            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
 
         return result;
@@ -1407,7 +1420,7 @@ namespace autodiff {
         g.add_edge(result, t);
     
         if (!g.lazy) {
-            eval_vertex(result, autodiff::eval_funcs);
+            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
     
         return result;
@@ -1476,7 +1489,7 @@ namespace autodiff {
         g.add_edge(result, t);
     
         if (!g.lazy) {
-            eval_vertex(result, autodiff::eval_funcs);
+            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
     
         return result;
@@ -1554,7 +1567,7 @@ namespace autodiff {
         g.add_edge(result, t);
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::eval_funcs);
+            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
 
         return result;

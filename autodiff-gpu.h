@@ -8,6 +8,65 @@ namespace autodiff {
 
     namespace gpu {
 
+        void mul_eval(std::shared_ptr<op_t> t);
+        void mul_grad(std::shared_ptr<op_t> t);
+
+        void emul_eval(std::shared_ptr<op_t> t);
+        void emul_grad(std::shared_ptr<op_t> t);
+
+        void logistic_eval(std::shared_ptr<op_t> t);
+        void logistic_grad(std::shared_ptr<op_t> t);
+
+        void tanh_eval(std::shared_ptr<op_t> t);
+        void tanh_grad(std::shared_ptr<op_t> t);
+
+        void add_eval(std::shared_ptr<op_t> t);
+        void add_grad(std::shared_ptr<op_t> t);
+
+        void sub_eval(std::shared_ptr<op_t> t);
+        void sub_grad(std::shared_ptr<op_t> t);
+
+        void logsoftmax_eval(std::shared_ptr<op_t> t);
+        void logsoftmax_grad(std::shared_ptr<op_t> t);
+
+        void resize_as_eval(std::shared_ptr<op_t> t);
+        void resize_as_grad(std::shared_ptr<op_t> t);
+
+        void rep_row_to_eval(std::shared_ptr<op_t> t);
+        void rep_row_to_grad(std::shared_ptr<op_t> t);
+
+        void dropout_mask_eval(std::shared_ptr<op_t> t);
+        void dropout_mask_grad(std::shared_ptr<op_t> t);
+
+        static std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> eval_funcs {
+            { "var", var_eval },
+            { "mul", mul_eval },
+            { "emul", emul_eval },
+            { "logistic", logistic_eval },
+            { "tanh", tanh_eval },
+            { "add", add_eval },
+            { "sub", sub_eval },
+            { "logsoftmax", logsoftmax_eval },
+            { "resize_as", resize_as_eval },
+            { "rep_row_to", rep_row_to_eval },
+            { "dropout_mask", dropout_mask_eval },
+        };
+
+        static std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> grad_funcs {
+            { "var", var_grad },
+            { "mul", mul_grad },
+            { "emul", emul_grad },
+            { "logistic", logistic_grad },
+            { "tanh", tanh_grad },
+            { "add", add_grad },
+            { "sub", sub_grad },
+            { "logsoftmax", logsoftmax_grad },
+            { "resize_as", resize_as_grad },
+            { "rep_row_to", rep_row_to_grad },
+            { "dropout_mask", dropout_mask_grad },
+        };
+
+#if 0
         template <class T>
         struct memory_pool {
 
@@ -52,28 +111,18 @@ namespace autodiff {
 
         void var_alloc(std::shared_ptr<op_t> t, memory_pool<double>& mem);
 
-        void mul_eval(std::shared_ptr<op_t> t);
-        void mul_grad(std::shared_ptr<op_t> t);
         void mul_alloc(std::shared_ptr<op_t> t, memory_pool<double>& mem);
 
-        void emul_eval(std::shared_ptr<op_t> t);
-        void emul_grad(std::shared_ptr<op_t> t);
         void emul_alloc(std::shared_ptr<op_t> t, memory_pool<double>& mem);
 
-        void logistic_eval(std::shared_ptr<op_t> t);
-        void logistic_grad(std::shared_ptr<op_t> t);
         void logistic_alloc(std::shared_ptr<op_t> t, memory_pool<double>& mem);
 
         void relu_eval(std::shared_ptr<op_t> t);
         void relu_grad(std::shared_ptr<op_t> t);
         void relu_alloc(std::shared_ptr<op_t> t, memory_pool<double>& mem);
 
-        void tanh_eval(std::shared_ptr<op_t> t);
-        void tanh_grad(std::shared_ptr<op_t> t);
         void tanh_alloc(std::shared_ptr<op_t> t, memory_pool<double>& mem);
 
-        void add_eval(std::shared_ptr<op_t> t);
-        void add_grad(std::shared_ptr<op_t> t);
         void add_alloc(std::shared_ptr<op_t> t, memory_pool<double>& mem);
 
         void sub_eval(std::shared_ptr<op_t> t);
@@ -84,8 +133,6 @@ namespace autodiff {
         void softmax_grad(std::shared_ptr<op_t> t);
         void softmax_alloc(std::shared_ptr<op_t> t, memory_pool<double>& mem);
 
-        void logsoftmax_eval(std::shared_ptr<op_t> t);
-        void logsoftmax_grad(std::shared_ptr<op_t> t);
         void logsoftmax_alloc(std::shared_ptr<op_t> t, memory_pool<double>& mem);
 
         void dot_eval(std::shared_ptr<op_t> t);
@@ -149,6 +196,7 @@ namespace autodiff {
             memory_pool<double>& mem,
             std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>,
             memory_pool<double>&)>> const& funcs);
+#endif
 
     }
 }

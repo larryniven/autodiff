@@ -1,26 +1,27 @@
 CXXFLAGS += -std=c++11 -I ../../ -L ../../ebt -L ../../la
+NVCCFLAGS += -std=c++11 -I ../../ -L ../../ebt -L ../../la
 
 .PHONY: all gpu clean
 
 all: test-autodiff
 
-gpu: test-autodiff-gpu test-autodiff-op-gpu
+gpu: test-autodiff-gpu
 
 clean:
 	-rm *.o
 	-rm test-autodiff test-autodiff-op-gpu test-autodiff-gpu
 
 test-autodiff: test-autodiff.o ../autodiff.o ../autodiff-op.o
-	$(CXX) $(CXXFLAGS) -o $@ $^ -lla -lebt -lcblas
+	$(CXX) $(CXXFLAGS) -o $@ $^ -lla -lebt -lblas
 
 test-autodiff-gpu: test-autodiff-gpu.o ../autodiff.o ../autodiff-gpu.o ../autodiff-op.o ../autodiff-op-gpu.o
-	nvcc $(CXXFLAGS) -o $@ $^ -llagpu -lebt -lcublas -lcblas
+	$(CXX) $(CXXFLAGS) -L /opt/cuda/lib64 -o $@ $^ -llagpu -lebt -lcublas -lcuda -lcudart -lblas
 
 test-autodiff-op-gpu:: test-autodiff-op-gpu.o ../autodiff-op-gpu.o
-	nvcc $(CXXFLAGS) -o $@ $^ -llagpu -lebt -lcublas
+	nvcc $(NVCCFLAGS) -o $@ $^ -llagpu -lebt -lcublas
 
 test-autodiff-gpu.o: test-autodiff-gpu.cu
-	nvcc $(CXXFLAGS) -c test-autodiff-gpu.cu
+	nvcc $(NVCCFLAGS) -c test-autodiff-gpu.cu
 
 test-autodiff-op-gpu.o: test-autodiff-op-gpu.cu
-	nvcc $(CXXFLAGS) -c test-autodiff-op-gpu.cu
+	nvcc $(NVCCFLAGS) -c test-autodiff-op-gpu.cu

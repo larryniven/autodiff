@@ -10,7 +10,17 @@
 
 namespace autodiff {
 
+    struct op_t;
     struct computation_graph;
+
+    struct interpreter {
+        std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> eval_funcs;
+        std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> grad_funcs;
+
+        interpreter();
+
+        static interpreter& get_instance();
+    };
 
     struct op_t {
         op_t();
@@ -204,6 +214,7 @@ namespace autodiff {
     }
 
     static std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> eval_funcs {
+        { "var", var_eval },
         { "mul", mul_eval },
         { "ltmul", ltmul_eval },
         { "rtmul", rtmul_eval },
@@ -212,7 +223,6 @@ namespace autodiff {
         { "relu", relu_eval },
         { "tanh", tanh_eval },
         { "exp", exp_eval },
-        { "var", var_eval },
         { "add", add_eval },
         { "sub", sub_eval },
         { "norm", norm_eval },
@@ -232,6 +242,7 @@ namespace autodiff {
     };
 
     static std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> grad_funcs {
+        { "var", var_grad },
         { "mul", mul_grad },
         { "ltmul", ltmul_grad },
         { "rtmul", rtmul_grad },
@@ -240,7 +251,6 @@ namespace autodiff {
         { "relu", relu_grad },
         { "tanh", tanh_grad },
         { "exp", exp_grad },
-        { "var", var_grad },
         { "add", add_grad },
         { "sub", sub_grad },
         { "norm", norm_grad },
