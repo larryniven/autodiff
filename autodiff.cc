@@ -1303,23 +1303,91 @@ namespace autodiff {
 
         if (t->output == nullptr) {
             la::tensor<double> w;
-            w.resize({ v.vec_size() / u.vec_size(), u.vec_size() });
+            std::vector<unsigned int> sizes = u.sizes();
+            std::vector<unsigned int> new_sizes;
+            new_sizes.push_back(v.vec_size() / u.vec_size());
+            new_sizes.insert(new_sizes.end(), sizes.begin(), sizes.end());
+            w.resize(new_sizes);
+
             t->output = std::make_shared<la::tensor<double>>(w);
         }
 
         auto& w = get_output<la::tensor_like<double>>(t);
 
-        double *w_data = w.data();
-        double const *u_data = u.data();
-        unsigned int col = w.size(1);
-        unsigned int k = 0;
-        for (int i = 0; i < w.size(0); ++i) {
-            std::copy(u_data, u_data + col, w_data + k);
-            k += col;
-        }
+        la::weak_matrix<double> w_mat {w.data(), v.vec_size() / u.vec_size(), u.vec_size()};
+
+        la::vector<double> one;
+        one.resize(v.vec_size() / u.vec_size(), 1);
+
+        la::outer_prod(w_mat, one, u.as_vector());
     }
 
     void rep_row_to_grad(std::shared_ptr<op_t> t)
+    {
+        auto u_op = get_child(t, 0);
+
+        auto& u = get_output<la::tensor_like<double>>(u_op);
+        auto& v = get_output<la::tensor_like<double>>(get_child(t, 1));
+
+        if (u_op->grad_needed && u_op->grad == nullptr) {
+            la::tensor<double> g;
+            la::resize_as(g, u);
+            u_op->grad = std::make_shared<la::tensor<double>>(g);
+        }
+
+        auto& g_w = get_grad<la::tensor_like<double>>(t);
+        auto& g_u = get_grad<la::tensor_like<double>>(u_op);
+
+        if (u_op->grad_needed) {
+            la::weak_matrix<double> z {g_w.data(), g_w.vec_size() / u.vec_size(), u.vec_size()};
+
+            la::vector<double> one;
+            one.resize({g_w.vec_size() / u.vec_size()}, 1);
+
+            la::lmul(g_u.as_vector(), one, z);
+        }
+    }
+
+    std::shared_ptr<op_t> rep_col_to(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2)
+    {
+        auto& g = *t1->graph;
+
+        std::shared_ptr<op_t> result = g.make_node("rep_col_to");
+    
+        g.add_edge(result, t1);
+        g.add_edge(result, t2);
+    
+        if (!g.lazy) {
+            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+        }
+
+        return result;
+    }
+
+    void rep_col_to_eval(std::shared_ptr<op_t> t)
+    {
+        auto& u = get_output<la::tensor_like<double>>(get_child(t, 0));
+        auto& v = get_output<la::tensor_like<double>>(get_child(t, 1));
+
+        assert(v.vec_size() % u.vec_size() == 0);
+
+        if (t->output == nullptr) {
+            la::tensor<double> w;
+            std::vector<unsigned int> sizes = u.sizes();
+            sizes.push_back(v.vec_size() / u.vec_size());
+            w.resize(sizes);
+            t->output = std::make_shared<la::tensor<double>>(w);
+        }
+
+        auto& w = get_output<la::tensor_like<double>>(t);
+
+        la::vector<double> one;
+        one.resize(v.vec_size() / u.vec_size(), 1);
+
+        la::outer_prod(w.as_matrix(), u.as_vector(), one);
+    }
+
+    void rep_col_to_grad(std::shared_ptr<op_t> t)
     {
         auto& u = get_output<la::tensor_like<double>>(get_child(t, 0));
         auto& v = get_output<la::tensor_like<double>>(get_child(t, 1));
@@ -1338,14 +1406,10 @@ namespace autodiff {
         auto& g_u = get_grad<la::tensor_like<double>>(u_op);
 
         if (u_op->grad_needed) {
-            double *g_w_data = g_w.data();
-            unsigned int col = g_w.size(1);
-            unsigned int k = 0;
-            for (int i = 0; i < g_w.size(0); ++i) {
-                la::weak_vector<double> g_w_i { g_w_data + k, col };
-                la::iadd(g_u.as_vector(), g_w_i);
-                k += col;
-            }
+            la::vector<double> one;
+            one.resize(v.vec_size() / u.vec_size(), 1);
+            
+            la::mul(g_u.as_vector(), g_w.as_matrix(), one);
         }
     }
 

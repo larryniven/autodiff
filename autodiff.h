@@ -151,6 +151,10 @@ namespace autodiff {
     void rep_row_to_eval(std::shared_ptr<op_t> t);
     void rep_row_to_grad(std::shared_ptr<op_t> t);
 
+    std::shared_ptr<op_t> rep_col_to(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2);
+    void rep_col_to_eval(std::shared_ptr<op_t> t);
+    void rep_col_to_grad(std::shared_ptr<op_t> t);
+
     std::shared_ptr<op_t> corr_linearize(std::shared_ptr<op_t> const& t1, std::shared_ptr<op_t> t2);
     void corr_linearize_eval(std::shared_ptr<op_t> t);
     void corr_linearize_grad(std::shared_ptr<op_t> t);
@@ -235,6 +239,7 @@ namespace autodiff {
         { "reshape", reshape_eval },
         { "resize_as", resize_as_eval },
         { "rep_row_to", rep_row_to_eval },
+        { "rep_col_to", rep_col_to_eval },
         { "corr_linearize", corr_linearize_eval },
         { "seg-max", seg_max_eval },
         { "high-pass-k", high_pass_k_eval },
@@ -263,6 +268,7 @@ namespace autodiff {
         { "reshape", reshape_grad },
         { "resize_as", resize_as_grad },
         { "rep_row_to", rep_row_to_grad },
+        { "rep_col_to", rep_col_to_grad },
         { "corr_linearize", corr_linearize_grad },
         { "seg-max", seg_max_grad },
         { "high-pass-k", high_pass_k_grad },
