@@ -66,6 +66,7 @@ namespace autodiff {
     };
 
     std::shared_ptr<op_t> get_child(std::shared_ptr<op_t> const& t, int index);
+    void add_child(std::shared_ptr<op_t> const& t, std::shared_ptr<op_t> const& ch);
 
     inline void var_eval(std::shared_ptr<op_t> t) {};
     inline void var_grad(std::shared_ptr<op_t> t) {};
@@ -82,6 +83,7 @@ namespace autodiff {
     void rtmul_eval(std::shared_ptr<op_t> t);
     void rtmul_grad(std::shared_ptr<op_t> t);
 
+    std::shared_ptr<op_t> emul(std::shared_ptr<op_t> s, std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2);
     std::shared_ptr<op_t> emul(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2);
     void emul_eval(std::shared_ptr<op_t> t);
     void emul_grad(std::shared_ptr<op_t> t);

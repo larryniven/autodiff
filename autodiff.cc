@@ -80,6 +80,13 @@ namespace autodiff {
         return g.vertices[g.adj[t->id][index]];
     }
 
+    void add_child(std::shared_ptr<op_t> const& t, std::shared_ptr<op_t> const& ch)
+    {
+        auto& g = *t->graph;
+
+        g.add_edge(t, ch);
+    }
+
     std::shared_ptr<op_t> mul(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2)
     {
         assert(t1->graph == t2->graph);
@@ -113,10 +120,7 @@ namespace autodiff {
 
             c.resize(sizes);
 
-            t->output = std::make_shared<la::tensor<double>>(c);
-        } else {
-            auto& c = get_output<la::tensor_like<double>>(t);
-            la::zero(c);
+            t->output = std::make_shared<la::tensor<double>>(std::move(c));
         }
 
         auto& c = get_output<la::tensor_like<double>>(t);
@@ -185,10 +189,7 @@ namespace autodiff {
         if (t->output == nullptr) {
             la::tensor<double> c;
             c.resize({ a.size(a.dim() - 1), b.size(a.dim() - 1) });
-            t->output = std::make_shared<la::tensor<double>>(c);
-        } else {
-            auto& c = get_output<la::tensor_like<double>>(t);
-            la::zero(c);
+            t->output = std::make_shared<la::tensor<double>>(std::move(c));
         }
 
         auto& c = get_output<la::tensor_like<double>>(t);
@@ -264,10 +265,7 @@ namespace autodiff {
 
             c.resize(sizes);
 
-            t->output = std::make_shared<la::tensor<double>>(c);
-        } else {
-            auto& c = get_output<la::tensor_like<double>>(t);
-            la::zero(c);
+            t->output = std::make_shared<la::tensor<double>>(std::move(c));
         }
 
         auto& c = get_output<la::tensor_like<double>>(t);
@@ -308,6 +306,29 @@ namespace autodiff {
         }
     }
 
+    std::shared_ptr<op_t> emul(std::shared_ptr<op_t> s, std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2)
+    {
+        assert(t1->graph == t2->graph);
+        assert(t1->graph != nullptr);
+
+        auto& g = *t1->graph;
+
+        std::shared_ptr<op_t> result = g.make_node("emul");
+
+        g.add_edge(result, t1);
+        g.add_edge(result, t2);
+        g.add_edge(result, s);
+
+        result->output = s->output;
+        result->grad = s->grad;
+    
+        if (!g.lazy) {
+            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+        }
+
+        return result;
+    }
+
     std::shared_ptr<op_t> emul(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2)
     {
         assert(t1->graph == t2->graph);
@@ -335,10 +356,7 @@ namespace autodiff {
         if (t->output == nullptr) {
             la::tensor<double> z;
             la::resize_as(z, u);
-            t->output = std::make_shared<la::tensor<double>>(z);
-        } else {
-            auto& z = get_output<la::tensor_like<double>>(t);
-            la::zero(z);
+            t->output = std::make_shared<la::tensor<double>>(std::move(z));
         }
 
         auto& z = get_output<la::tensor_like<double>>(t);
@@ -400,10 +418,7 @@ namespace autodiff {
         if (t->output == nullptr) {
             la::tensor<double> z;
             la::resize_as(z, v);
-            t->output = std::make_shared<la::tensor<double>>(z);
-        } else {
-            auto& z = get_output<la::tensor_like<double>>(t);
-            la::zero(z);
+            t->output = std::make_shared<la::tensor<double>>(std::move(z));
         }
 
         auto& z = get_output<la::tensor_like<double>>(t);
@@ -452,10 +467,7 @@ namespace autodiff {
         if (t->output == nullptr) {
             la::tensor<double> z;
             la::resize_as(z, v);
-            t->output = std::make_shared<la::tensor<double>>(z);
-        } else {
-            auto& z = get_output<la::tensor_like<double>>(t);
-            la::zero(z);
+            t->output = std::make_shared<la::tensor<double>>(std::move(z));
         }
 
         auto& z = get_output<la::tensor_like<double>>(t);
@@ -504,10 +516,7 @@ namespace autodiff {
         if (t->output == nullptr) {
             la::tensor<double> z;
             la::resize_as(z, v);
-            t->output = std::make_shared<la::tensor<double>>(z);
-        } else {
-            auto& z = get_output<la::tensor_like<double>>(t);
-            la::zero(z);
+            t->output = std::make_shared<la::tensor<double>>(std::move(z));
         }
 
         auto& z = get_output<la::tensor_like<double>>(t);
@@ -557,9 +566,6 @@ namespace autodiff {
             la::tensor<double> z;
             la::resize_as(z, m);
             t->output = std::make_shared<la::tensor<double>>(std::move(z));
-        } else {
-            auto& z = get_output<la::tensor_like<double>>(t);
-            la::zero(z);
         }
 
         auto& z = get_output<la::tensor_like<double>>(t);
@@ -654,10 +660,7 @@ namespace autodiff {
             la::tensor<double> z;
             la::tensor_like<double>& m = get_output<la::tensor_like<double>>(get_child(t, 0));
             la::resize_as(z, m);
-            t->output = std::make_shared<la::tensor<double>>(z);
-        } else {
-            auto& z = get_output<la::tensor_like<double>>(t);
-            la::zero(z);
+            t->output = std::make_shared<la::tensor<double>>(std::move(z));
         }
 
         auto& result = get_output<la::tensor_like<double>>(t);
@@ -717,10 +720,7 @@ namespace autodiff {
         if (t->output == nullptr) {
             la::tensor<double> z;
             la::resize_as(z, u);
-            t->output = std::make_shared<la::tensor<double>>(z);
-        } else {
-            auto& z = get_output<la::tensor_like<double>>(t);
-            la::zero(z);
+            t->output = std::make_shared<la::tensor<double>>(std::move(z));
         }
 
         auto& result = get_output<la::tensor_like<double>>(t);
@@ -788,14 +788,15 @@ namespace autodiff {
         auto ch = get_child(t, 0);
         auto& v = autodiff::get_output<la::tensor<double>>(ch);
 
-        if (ch->grad == nullptr) {
+        if (ch->grad_needed && ch->grad == nullptr) {
             la::tensor<double> z;
             z.resize(v.sizes());
-            ch->grad = std::make_shared<la::tensor<double>>(z);
+            ch->grad = std::make_shared<la::tensor<double>>(std::move(z));
         }
 
         double n = autodiff::get_output<double>(t);
-        if (n != 0.0) {
+
+        if (ch->grad_needed && n != 0.0) {
             double g = autodiff::get_grad<double>(t);
             auto& z = autodiff::get_grad<la::tensor<double>>(ch);
             la::axpy(z, g / n, v);
@@ -823,10 +824,7 @@ namespace autodiff {
         if (t->output == nullptr) {
             la::tensor<double> z;
             la::resize_as(z, v);
-            t->output = std::make_shared<la::tensor<double>>(z);
-        } else {
-            auto& z = get_output<la::tensor_like<double>>(t);
-            la::zero(z);
+            t->output = std::make_shared<la::tensor<double>>(std::move(z));
         }
 
         auto& z = get_output<la::tensor_like<double>>(t);
@@ -875,10 +873,7 @@ namespace autodiff {
         if (t->output == nullptr) {
             la::tensor<double> z;
             la::resize_as(z, v);
-            t->output = std::make_shared<la::tensor<double>>(z);
-        } else {
-            auto& z = get_output<la::tensor_like<double>>(t);
-            la::zero(z);
+            t->output = std::make_shared<la::tensor<double>>(std::move(z));
         }
 
         auto& z = get_output<la::tensor_like<double>>(t);
@@ -1033,7 +1028,7 @@ namespace autodiff {
             if (c->grad_needed && c->grad == nullptr) {
                 la::tensor<double> g;
                 la::resize_as(g, v);
-                c->grad = std::make_shared<la::tensor<double>>(g);
+                c->grad = std::make_shared<la::tensor<double>>(std::move(g));
             }
 
             auto& g = autodiff::get_grad<la::tensor_like<double>>(c);
@@ -1114,7 +1109,7 @@ namespace autodiff {
             if (c->grad_needed && c->grad == nullptr) {
                 la::tensor<double> g;
                 la::resize_as(g, v);
-                c->grad = std::make_shared<la::tensor<double>>(g);
+                c->grad = std::make_shared<la::tensor<double>>(std::move(g));
             }
 
             auto& g = autodiff::get_grad<la::tensor_like<double>>(c);
@@ -1270,7 +1265,7 @@ namespace autodiff {
             la::tensor<double> w;
             la::resize_as(w, c_t, value);
 
-            t->output = std::make_shared<la::tensor<double>>(w);
+            t->output = std::make_shared<la::tensor<double>>(std::move(w));
         }
     }
 
@@ -1309,7 +1304,7 @@ namespace autodiff {
             new_sizes.insert(new_sizes.end(), sizes.begin(), sizes.end());
             w.resize(new_sizes);
 
-            t->output = std::make_shared<la::tensor<double>>(w);
+            t->output = std::make_shared<la::tensor<double>>(std::move(w));
         }
 
         auto& w = get_output<la::tensor_like<double>>(t);
@@ -1332,7 +1327,7 @@ namespace autodiff {
         if (u_op->grad_needed && u_op->grad == nullptr) {
             la::tensor<double> g;
             la::resize_as(g, u);
-            u_op->grad = std::make_shared<la::tensor<double>>(g);
+            u_op->grad = std::make_shared<la::tensor<double>>(std::move(g));
         }
 
         auto& g_w = get_grad<la::tensor_like<double>>(t);
@@ -1376,7 +1371,7 @@ namespace autodiff {
             std::vector<unsigned int> sizes = u.sizes();
             sizes.push_back(v.vec_size() / u.vec_size());
             w.resize(sizes);
-            t->output = std::make_shared<la::tensor<double>>(w);
+            t->output = std::make_shared<la::tensor<double>>(std::move(w));
         }
 
         auto& w = get_output<la::tensor_like<double>>(t);
@@ -1439,7 +1434,7 @@ namespace autodiff {
         if (t->output == nullptr) {
             la::tensor<double> w;
             w.resize(std::vector<unsigned int> { u.size(0), u.size(1), v_mat.rows() });
-            t->output = std::make_shared<la::tensor<double>>(w);
+            t->output = std::make_shared<la::tensor<double>>(std::move(w));
         }
 
         la::tensor_like<double>& w = get_output<la::tensor_like<double>>(t);
@@ -1458,7 +1453,7 @@ namespace autodiff {
         if (u_op->grad_needed && u_op->grad == nullptr) {
             la::tensor<double> g;
             la::resize_as(g, u);
-            u_op->grad = std::make_shared<la::tensor<double>>(g);
+            u_op->grad = std::make_shared<la::tensor<double>>(std::move(g));
         }
 
         auto& g_w = get_grad<la::tensor_like<double>>(t);
@@ -1499,7 +1494,7 @@ namespace autodiff {
             double inf = std::numeric_limits<double>::infinity();
             la::tensor<double> z;
             z.resize({v.size(2)}, -inf);
-            t->output = std::make_shared<la::tensor<double>>(z);
+            t->output = std::make_shared<la::tensor<double>>(std::move(z));
         }
     
         auto& z = get_output<la::tensor_like<double>>(t);
@@ -1525,10 +1520,10 @@ namespace autodiff {
         auto ch = get_child(t, 0);
         auto& v = get_output<la::tensor_like<double>>(ch);
 
-        if (ch->grad == nullptr) {
+        if (ch->grad_needed && ch->grad == nullptr) {
             la::tensor<double> z;
             z.resize(v.sizes());
-            ch->grad = std::make_shared<la::tensor<double>>(z);
+            ch->grad = std::make_shared<la::tensor<double>>(std::move(z));
         }
 
         auto& g = get_grad<la::tensor_like<double>>(t);
@@ -1536,8 +1531,10 @@ namespace autodiff {
 
         auto& argmin = *std::static_pointer_cast<std::vector<std::pair<int, int>>>(t->data);
 
-        for (int c = 0; c < argmin.size(); ++c) {
-            z({argmin[c].first, argmin[c].second, c}) += g({c});
+        if (ch->grad_needed) {
+            for (int c = 0; c < argmin.size(); ++c) {
+                z({argmin[c].first, argmin[c].second, c}) += g({c});
+            }
         }
     }
 
@@ -1569,7 +1566,7 @@ namespace autodiff {
         if (t->output == nullptr) {
             la::tensor<double> z;
             z.resize(v.sizes());
-            t->output = std::make_shared<la::tensor<double>>(z);
+            t->output = std::make_shared<la::tensor<double>>(std::move(z));
         }
 
         std::vector<std::pair<double, int>> heap;
@@ -1603,7 +1600,7 @@ namespace autodiff {
         auto ch = get_child(t, 0);
         auto& v = get_output<la::tensor_like<double>>(ch);
 
-        if (ch->grad == nullptr) {
+        if (ch->grad_needed && ch->grad == nullptr) {
             la::tensor<double> z;
             z.resize(v.sizes());
             ch->grad = std::make_shared<la::tensor<double>>(z);
@@ -1614,8 +1611,10 @@ namespace autodiff {
 
         std::vector<int>& indices = std::static_pointer_cast<std::pair<int, std::vector<int>>>(t->data)->second;
 
-        for (auto& i: indices) {
-            z.data()[i] += g.data()[i];
+        if (ch->grad_needed) {
+            for (auto& i: indices) {
+                z.data()[i] += g.data()[i];
+            }
         }
     }
 
@@ -1644,7 +1643,7 @@ namespace autodiff {
         if (t->output == nullptr) {
             la::tensor<double> w;
             la::resize_as(w, u);
-            t->output = std::make_shared<la::tensor<double>>(w);
+            t->output = std::make_shared<la::tensor<double>>(std::move(w));
         }
 
         double prob;
@@ -1770,6 +1769,7 @@ namespace autodiff {
 
         for (int i = 0; i < g.adj[t->id].size(); ++i) {
             if (g.vertices[g.adj[t->id][i]]->grad_needed) {
+                // TODO: dangerous?
                 t->grad_needed = true;
                 break;
             }
@@ -1822,7 +1822,7 @@ namespace autodiff {
         std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> const& funcs)
     {
         for (int i = 0; i < topo_order.size(); ++i) {
-            if (topo_order[i]->grad != nullptr) {
+            if (topo_order[i]->grad_needed && topo_order[i]->grad != nullptr) {
                 eval_vertex(topo_order[i], funcs);
             }
         }
