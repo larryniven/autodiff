@@ -24,10 +24,7 @@ namespace autodiff {
 
                 c.resize(sizes);
 
-                t->output = std::make_shared<la::gpu::tensor<double>>(c);
-            } else {
-                auto& c = get_output<la::gpu::tensor_like<double>>(t);
-                la::gpu::zero(c);
+                t->output = std::make_shared<la::gpu::tensor<double>>(std::move(c));
             }
 
             auto& c = get_output<la::gpu::tensor_like<double>>(t);
@@ -77,10 +74,7 @@ namespace autodiff {
             if (t->output == nullptr) {
                 la::gpu::tensor<double> z;
                 la::gpu::resize_as(z, u);
-                t->output = std::make_shared<la::gpu::tensor<double>>(z);
-            } else {
-                auto& z = get_output<la::gpu::tensor_like<double>>(t);
-                la::gpu::zero(z);
+                t->output = std::make_shared<la::gpu::tensor<double>>(std::move(z));
             }
 
             auto& z = get_output<la::gpu::tensor_like<double>>(t);
@@ -128,10 +122,7 @@ namespace autodiff {
             if (t->output == nullptr) {
                 la::gpu::tensor<double> z;
                 la::gpu::resize_as(z, v);
-                t->output = std::make_shared<la::gpu::tensor<double>>(z);
-            } else {
-                auto& z = get_output<la::gpu::tensor_like<double>>(t);
-                la::gpu::zero(z);
+                t->output = std::make_shared<la::gpu::tensor<double>>(std::move(z));
             }
 
             auto& z = get_output<la::gpu::tensor_like<double>>(t);
@@ -166,10 +157,7 @@ namespace autodiff {
             if (t->output == nullptr) {
                 la::gpu::tensor<double> z;
                 la::gpu::resize_as(z, v);
-                t->output = std::make_shared<la::gpu::tensor<double>>(z);
-            } else {
-                auto& z = get_output<la::gpu::tensor_like<double>>(t);
-                la::gpu::zero(z);
+                t->output = std::make_shared<la::gpu::tensor<double>>(std::move(z));
             }
 
             auto& z = get_output<la::gpu::tensor_like<double>>(t);
@@ -208,19 +196,18 @@ namespace autodiff {
                         != get_output<la::gpu::tensor_like<double>>(get_child(t, i)).vec_size())
                 {
                     std::cerr << get_output<la::gpu::tensor_like<double>>(get_child(t, i-1)).vec_size()
-                        << " != " << get_output<la::gpu::tensor_like<double>>(get_child(t, i)).vec_size() << std::endl;
+                        << " != " << get_output<la::gpu::tensor_like<double>>(
+                            get_child(t, i)).vec_size() << std::endl;
                     exit(1);
                 }
             }
 
             if (t->output == nullptr) {
                 la::gpu::tensor<double> z;
-                la::gpu::tensor_like<double>& m = get_output<la::gpu::tensor_like<double>>(get_child(t, 0));
+                la::gpu::tensor_like<double>& m = get_output<la::gpu::tensor_like<double>>(
+                    get_child(t, 0));
                 la::gpu::resize_as(z, m);
-                t->output = std::make_shared<la::gpu::tensor<double>>(z);
-            } else {
-                auto& z = get_output<la::gpu::tensor_like<double>>(t);
-                la::gpu::zero(z);
+                t->output = std::make_shared<la::gpu::tensor<double>>(std::move(z));
             }
 
             auto& result = get_output<la::gpu::tensor_like<double>>(t);
@@ -264,10 +251,7 @@ namespace autodiff {
             if (t->output == nullptr) {
                 la::gpu::tensor<double> z;
                 la::gpu::resize_as(z, u);
-                t->output = std::make_shared<la::gpu::tensor<double>>(z);
-            } else {
-                auto& z = get_output<la::gpu::tensor_like<double>>(t);
-                la::gpu::zero(z);
+                t->output = std::make_shared<la::gpu::tensor<double>>(std::move(z));
             }
 
             auto& result = get_output<la::gpu::tensor_like<double>>(t);
@@ -316,10 +300,7 @@ namespace autodiff {
             if (t->output == nullptr) {
                 la::gpu::tensor<double> z;
                 la::gpu::resize_as(z, v);
-                t->output = std::make_shared<la::gpu::tensor<double>>(z);
-            } else {
-                auto& z = get_output<la::gpu::tensor_like<double>>(t);
-                la::gpu::zero(z);
+                t->output = std::make_shared<la::gpu::tensor<double>>(std::move(z));
             }
 
             auto& z = get_output<la::gpu::tensor_like<double>>(t);
@@ -359,7 +340,7 @@ namespace autodiff {
                 la::gpu::tensor<double> w;
                 la::gpu::resize_as(w, c_t, value);
 
-                t->output = std::make_shared<la::gpu::tensor<double>>(w);
+                t->output = std::make_shared<la::gpu::tensor<double>>(std::move(w));
             }
         }
 
@@ -382,7 +363,7 @@ namespace autodiff {
                 new_sizes.insert(new_sizes.end(), sizes.begin(), sizes.end());
                 w.resize(new_sizes);
 
-                t->output = std::make_shared<la::gpu::tensor<double>>(w);
+                t->output = std::make_shared<la::gpu::tensor<double>>(std::move(w));
             }
 
             auto& w = get_output<la::gpu::tensor_like<double>>(t);
@@ -405,14 +386,15 @@ namespace autodiff {
             if (u_op->grad_needed && u_op->grad == nullptr) {
                 la::gpu::tensor<double> g;
                 la::gpu::resize_as(g, u);
-                u_op->grad = std::make_shared<la::gpu::tensor<double>>(g);
+                u_op->grad = std::make_shared<la::gpu::tensor<double>>(std::move(g));
             }
 
             auto& g_w = get_grad<la::gpu::tensor_like<double>>(t);
             auto& g_u = get_grad<la::gpu::tensor_like<double>>(u_op);
 
             if (u_op->grad_needed) {
-                la::gpu::weak_matrix<double> z {g_w.data(), g_w.vec_size() / u.vec_size(), u.vec_size()};
+                la::gpu::weak_matrix<double> z {
+                    g_w.data(), g_w.vec_size() / u.vec_size(), u.vec_size()};
 
                 la::gpu::vector<double> one;
                 one.resize({g_w.vec_size() / u.vec_size()}, 1);
@@ -433,7 +415,7 @@ namespace autodiff {
                 std::vector<unsigned int> sizes = u.sizes();
                 sizes.push_back(v.vec_size() / u.vec_size());
                 w.resize(sizes);
-                t->output = std::make_shared<la::gpu::tensor<double>>(w);
+                t->output = std::make_shared<la::gpu::tensor<double>>(std::move(w));
             }
 
             auto& w = get_output<la::gpu::tensor_like<double>>(t);
@@ -456,7 +438,7 @@ namespace autodiff {
             if (u_op->grad_needed && u_op->grad == nullptr) {
                 la::gpu::tensor<double> g;
                 la::gpu::resize_as(g, u);
-                u_op->grad = std::make_shared<la::gpu::tensor<double>>(g);
+                u_op->grad = std::make_shared<la::gpu::tensor<double>>(std::move(g));
             }
 
             auto& g_w = get_grad<la::gpu::tensor_like<double>>(t);
