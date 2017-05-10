@@ -135,17 +135,35 @@ namespace autodiff {
         {
             assert(u.vec_size() == v.vec_size());
 
-            double logZ = -std::numeric_limits<double>::infinity();
+            unsigned int rows;
+            unsigned int cols;
 
-            double *u_data = u.data();
-            double const *v_data = v.data();
-
-            for (int j = 0; j < v.vec_size(); ++j) {
-                logZ = ebt::log_add(logZ, v_data[j]);
+            if (v.dim() == 1) {
+                rows = 1;
+                cols = v.vec_size();
+            } else {
+                rows = v.size(0);
+                cols = v.vec_size() / v.size(0);
             }
 
-            for (int i = 0; i < v.vec_size(); ++i) {
-                u_data[i] = v_data[i] - logZ;
+            la::weak_matrix<double> m {const_cast<double*>(v.data()),
+                rows, cols};
+
+            la::vector<double> logZs;
+            logZs.resize(m.rows(), -std::numeric_limits<double>::infinity());
+
+            for (int i = 0; i < m.rows(); ++i) {
+                for (int j = 0; j < m.cols(); ++j) {
+                    logZs(i) = ebt::log_add(logZs(i), m(i, j));
+                }
+            }
+
+            la::weak_matrix<double> result {u.data(), rows, cols};
+
+            for (int i = 0; i < result.rows(); ++i) {
+                for (int j = 0; j < result.cols(); ++j) {
+                    result(i, j) = m(i, j) - logZs(i);
+                }
             }
         }
 
@@ -155,18 +173,39 @@ namespace autodiff {
         {
             assert(result.vec_size() == grad.vec_size() && grad.vec_size() == output.vec_size());
 
-            double mu = 0;
+            unsigned int rows;
+            unsigned int cols;
 
-            double *result_data = result.data();
-            double const *grad_data = grad.data();
-            double const *output_data = output.data();
-
-            for (int i = 0; i < grad.vec_size(); ++i) {
-                mu += grad_data[i];
+            if (grad.dim() == 1) {
+                rows = 1;
+                cols = grad.vec_size();
+            } else {
+                rows = grad.size(0);
+                cols = grad.vec_size() / grad.size(0);
             }
 
-            for (int i = 0; i < grad.vec_size(); ++i) {
-                result_data[i] += grad_data[i] - std::exp(output_data[i]) * mu;
+            la::weak_matrix<double> grad_m {const_cast<double*>(grad.data()),
+                rows, cols};
+
+            la::weak_matrix<double> result_m {result.data(),
+                rows, cols};
+
+            la::weak_matrix<double> output_m {const_cast<double*>(output.data()),
+                rows, cols};
+
+            la::vector<double> mu;
+            mu.resize(grad_m.rows(), 0);
+
+            for (int i = 0; i < grad_m.rows(); ++i) {
+                for (int j = 0; j < grad_m.cols(); ++j) {
+                    mu(i) += grad_m(i, j);
+                }
+            }
+
+            for (int i = 0; i < grad_m.rows(); ++i) {
+                for (int j = 0; j < grad_m.cols(); ++j) {
+                    result_m(i, j) += grad_m(i, j) - std::exp(output_m(i, j)) * mu(i);
+                }
             }
         }
 

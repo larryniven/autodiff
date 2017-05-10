@@ -4,6 +4,8 @@
 #include <thrust/iterator/zip_iterator.h>
 #include <thrust/device_ptr.h>
 #include <thrust/reduce.h>
+#include <thrust/execution_policy.h>
+#include <thrust/functional.h>
 #include <cuda_runtime.h>
 
 namespace autodiff {
@@ -284,16 +286,14 @@ namespace autodiff {
                     isoftmax_grad_op { mu });
             }
 
-            struct ilogsoftmax_op {
-                double s;
+            struct key_op {
+                unsigned int cols;
 
-                template <class T>
                 __host__ __device__
-                void operator()(T t) const
+                int operator()(int i)
                 {
-                    thrust::get<0>(t) = thrust::get<1>(t) - s;
+                    return i / cols;
                 }
-
             };
 
             void logsoftmax(la::gpu::tensor_like<double>& u,
@@ -301,24 +301,54 @@ namespace autodiff {
             {
                 assert(u.vec_size() == v.vec_size());
 
+                unsigned int rows;
+                unsigned int cols;
+
+                if (v.dim() == 1) {
+                    rows = 1;
+                    cols = v.vec_size();
+                } else {
+                    rows = v.size(0);
+                    cols = v.vec_size() / v.size(0);
+                }
+
                 double inf = std::numeric_limits<double>::infinity();
 
-                double logZ = thrust::reduce(thrust::device_ptr<double const>(v.as_vector().begin()),
-                    thrust::device_ptr<double const>(v.as_vector().end()), -inf, log_add_op());
+                la::gpu::vector<int> keys;
+                keys.resize(v.vec_size());
 
-                thrust::for_each(
-                    thrust::make_zip_iterator(thrust::make_tuple(
-                        thrust::device_ptr<double>(u.as_vector().begin()),
-                        thrust::device_ptr<double const>(v.as_vector().begin()))),
-                    thrust::make_zip_iterator(thrust::make_tuple(
-                        thrust::device_ptr<double>(u.as_vector().end()),
-                        thrust::device_ptr<double const>(v.as_vector().end()))),
-                    ilogsoftmax_op { logZ });
+                thrust::transform(thrust::device, thrust::make_counting_iterator(0),
+                    thrust::make_counting_iterator(int(v.vec_size())),
+                    keys.data(), key_op { cols });
+
+                la::gpu::vector<double> logZ;
+                logZ.resize(rows, -inf);
+
+                thrust::reduce_by_key(thrust::device,
+                    thrust::device_ptr<int>(keys.begin()),
+                    thrust::device_ptr<int>(keys.end()),
+                    thrust::device_ptr<double const>(v.as_vector().begin()),
+                    thrust::make_discard_iterator(),
+                    thrust::device_ptr<double>(logZ.begin()),
+                    thrust::equal_to<int>(),
+                    log_add_op());
+
+                la::gpu::vector<double> one;
+                one.resize(cols, 1);
+
+                la::gpu::matrix<double> logZ_m;
+                logZ_m.resize(rows, cols);
+
+                la::gpu::outer_prod(logZ_m, logZ, one);
+
+                la::gpu::weak_matrix<double> v_m {const_cast<double*>(v.data()), rows, cols};
+                la::gpu::weak_matrix<double> u_m {u.data(), rows, cols};
+
+                la::gpu::iadd(u_m, v_m);
+                la::gpu::isub(u_m, logZ_m);
             }
 
             struct ilogsoftmax_grad_op {
-                double mu;
-
                 template <class T>
                 __host__ __device__
                 void operator()(T t) const
@@ -326,6 +356,7 @@ namespace autodiff {
                     auto& result = thrust::get<0>(t);
                     auto& grad = thrust::get<1>(t);
                     auto& output = thrust::get<2>(t);
+                    auto& mu = thrust::get<3>(t);
 
                     result += grad - exp(output) * mu;
                 }
@@ -336,23 +367,52 @@ namespace autodiff {
                 la::gpu::tensor_like<double> const& grad,
                 la::gpu::tensor_like<double> const& output)
             {
-                assert(grad.vec_size() == output.vec_size());
+                assert(grad.vec_size() == output.vec_size() && result.vec_size() == grad.vec_size());
 
-                double mu = thrust::reduce(
-                    thrust::device_ptr<double const>(grad.as_vector().begin()),
-                    thrust::device_ptr<double const>(grad.as_vector().end()),
-                    0.0, thrust::plus<double>());
+                unsigned int rows;
+                unsigned int cols;
 
-                thrust::for_each(
+                if (grad.dim() == 1) {
+                    rows = 1;
+                    cols = grad.vec_size();
+                } else {
+                    rows = grad.size(0);
+                    cols = grad.vec_size() / grad.size(0);
+                }
+
+                la::gpu::vector<double> one;
+                one.resize(cols, 1);
+
+                la::gpu::weak_matrix<double> grad_m {const_cast<double*>(grad.data()),
+                    rows, cols};
+
+                la::gpu::vector<double> mu;
+                mu.resize(rows);
+
+                la::gpu::mul(mu, grad_m, one);
+
+                la::gpu::matrix<double> mu_m;
+                mu_m.resize(rows, cols);
+
+                la::gpu::outer_prod(mu_m, mu, one);
+
+                unsigned int vec_size = rows * cols;
+
+                thrust::for_each(thrust::device,
                     thrust::make_zip_iterator(thrust::make_tuple(
-                        thrust::device_ptr<double>(result.as_vector().begin()),
-                        thrust::device_ptr<double const>(grad.as_vector().begin()),
-                        thrust::device_ptr<double const>(output.as_vector().begin()))),
+                        thrust::device_ptr<double>(result.data()),
+                        thrust::device_ptr<double const>(grad.data()),
+                        thrust::device_ptr<double const>(output.data()),
+                        thrust::device_ptr<double>(mu_m.data())
+                    )),
                     thrust::make_zip_iterator(thrust::make_tuple(
-                        thrust::device_ptr<double>(result.as_vector().end()),
-                        thrust::device_ptr<double const>(grad.as_vector().end()),
-                        thrust::device_ptr<double const>(output.as_vector().end()))),
-                    ilogsoftmax_grad_op { mu });
+                        thrust::device_ptr<double>(result.data()) + vec_size,
+                        thrust::device_ptr<double const>(grad.data()) + vec_size,
+                        thrust::device_ptr<double const>(output.data()) + vec_size,
+                        thrust::device_ptr<double>(mu_m.data()) + vec_size
+                    )),
+                    ilogsoftmax_grad_op{}
+                );
             }
 
         }
