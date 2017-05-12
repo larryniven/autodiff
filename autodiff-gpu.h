@@ -43,6 +43,7 @@ namespace autodiff {
 
         static std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> eval_funcs {
             { "var", var_eval },
+            { "weak_var", weak_var_eval },
             { "mul", mul_eval },
             { "emul", emul_eval },
             { "logistic", logistic_eval },
@@ -58,6 +59,7 @@ namespace autodiff {
 
         static std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> grad_funcs {
             { "var", var_grad },
+            { "weak_var", weak_var_grad },
             { "mul", mul_grad },
             { "emul", emul_grad },
             { "logistic", logistic_grad },

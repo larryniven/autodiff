@@ -9,7 +9,7 @@ namespace autodiff {
 
     namespace op {
 
-        void logistic(la::tensor_like<double>& u, la::tensor_like<double> const& v)
+        void logistic(la::cpu::tensor_like<double>& u, la::cpu::tensor_like<double> const& v)
         {
             assert(u.vec_size() == v.vec_size());
 
@@ -21,9 +21,9 @@ namespace autodiff {
             }
         }
 
-        void ilogistic_grad(la::tensor_like<double>& result,
-            la::tensor_like<double> const& grad,
-            la::tensor_like<double> const& output)
+        void ilogistic_grad(la::cpu::tensor_like<double>& result,
+            la::cpu::tensor_like<double> const& grad,
+            la::cpu::tensor_like<double> const& output)
         {
             assert(result.vec_size() == grad.vec_size() && grad.vec_size() == output.vec_size());
 
@@ -36,7 +36,7 @@ namespace autodiff {
             }
         }
 
-        void relu(la::tensor_like<double>& u, la::tensor_like<double> const& v)
+        void relu(la::cpu::tensor_like<double>& u, la::cpu::tensor_like<double> const& v)
         {
             assert(u.vec_size() == v.vec_size());
 
@@ -48,9 +48,9 @@ namespace autodiff {
             }
         }
 
-        void irelu_grad(la::tensor_like<double>& result,
-            la::tensor_like<double> const& grad,
-            la::tensor_like<double> const& output)
+        void irelu_grad(la::cpu::tensor_like<double>& result,
+            la::cpu::tensor_like<double> const& grad,
+            la::cpu::tensor_like<double> const& output)
         {
             assert(result.vec_size() == grad.vec_size() && grad.vec_size() == output.vec_size());
 
@@ -63,7 +63,7 @@ namespace autodiff {
             }
         }
 
-        void tanh(la::tensor_like<double>& u, la::tensor_like<double> const& v)
+        void tanh(la::cpu::tensor_like<double>& u, la::cpu::tensor_like<double> const& v)
         {
             assert(u.vec_size() == v.vec_size());
 
@@ -81,9 +81,9 @@ namespace autodiff {
             }
         }
 
-        void itanh_grad(la::tensor_like<double>& result,
-            la::tensor_like<double> const& grad,
-            la::tensor_like<double> const& output)
+        void itanh_grad(la::cpu::tensor_like<double>& result,
+            la::cpu::tensor_like<double> const& grad,
+            la::cpu::tensor_like<double> const& output)
         {
             assert(result.vec_size() == grad.vec_size() && grad.vec_size() == output.vec_size());
 
@@ -96,7 +96,7 @@ namespace autodiff {
             }
         }
 
-        void softmax(la::tensor_like<double>& u, la::tensor_like<double> const& v)
+        void softmax(la::cpu::tensor_like<double>& u, la::cpu::tensor_like<double> const& v)
         {
             assert(u.vec_size() == v.vec_size());
 
@@ -114,13 +114,13 @@ namespace autodiff {
             }
         }
 
-        void isoftmax_grad(la::tensor_like<double>& result,
-            la::tensor_like<double> const& grad,
-            la::tensor_like<double> const& output)
+        void isoftmax_grad(la::cpu::tensor_like<double>& result,
+            la::cpu::tensor_like<double> const& grad,
+            la::cpu::tensor_like<double> const& output)
         {
             assert(result.vec_size() == grad.vec_size() && grad.vec_size() == output.vec_size());
 
-            double mu = la::dot(grad, output);
+            double mu = la::cpu::dot(grad, output);
 
             double *result_data = result.data();
             double const *output_data = output.data();
@@ -131,25 +131,13 @@ namespace autodiff {
             }
         }
 
-        void logsoftmax(la::tensor_like<double>& u, la::tensor_like<double> const& v)
+        void logsoftmax(la::cpu::tensor_like<double>& u, la::cpu::tensor_like<double> const& v)
         {
             assert(u.vec_size() == v.vec_size());
 
-            unsigned int rows;
-            unsigned int cols;
+            la::cpu::matrix_like<double> const& m = v.as_matrix();
 
-            if (v.dim() == 1) {
-                rows = 1;
-                cols = v.vec_size();
-            } else {
-                rows = v.size(0);
-                cols = v.vec_size() / v.size(0);
-            }
-
-            la::weak_matrix<double> m {const_cast<double*>(v.data()),
-                rows, cols};
-
-            la::vector<double> logZs;
+            la::cpu::vector<double> logZs;
             logZs.resize(m.rows(), -std::numeric_limits<double>::infinity());
 
             for (int i = 0; i < m.rows(); ++i) {
@@ -158,7 +146,7 @@ namespace autodiff {
                 }
             }
 
-            la::weak_matrix<double> result {u.data(), rows, cols};
+            la::cpu::weak_matrix<double> result {u.data(), m.rows(), m.cols()};
 
             for (int i = 0; i < result.rows(); ++i) {
                 for (int j = 0; j < result.cols(); ++j) {
@@ -167,40 +155,27 @@ namespace autodiff {
             }
         }
 
-        void ilogsoftmax_grad(la::tensor_like<double>& result,
-            la::tensor_like<double> const& grad,
-            la::tensor_like<double> const& output)
+        void ilogsoftmax_grad(la::cpu::tensor_like<double>& result,
+            la::cpu::tensor_like<double> const& grad,
+            la::cpu::tensor_like<double> const& output)
         {
             assert(result.vec_size() == grad.vec_size() && grad.vec_size() == output.vec_size());
 
-            unsigned int rows;
-            unsigned int cols;
+            la::cpu::matrix_like<double> const& grad_m = grad.as_matrix();
 
-            if (grad.dim() == 1) {
-                rows = 1;
-                cols = grad.vec_size();
-            } else {
-                rows = grad.size(0);
-                cols = grad.vec_size() / grad.size(0);
-            }
+            la::cpu::weak_matrix<double> result_m {result.data(),
+                grad_m.rows(), grad_m.cols()};
 
-            la::weak_matrix<double> grad_m {const_cast<double*>(grad.data()),
-                rows, cols};
+            la::cpu::weak_matrix<double> output_m {const_cast<double*>(output.data()),
+                grad_m.rows(), grad_m.cols()};
 
-            la::weak_matrix<double> result_m {result.data(),
-                rows, cols};
-
-            la::weak_matrix<double> output_m {const_cast<double*>(output.data()),
-                rows, cols};
-
-            la::vector<double> mu;
+            la::cpu::vector<double> mu;
             mu.resize(grad_m.rows(), 0);
 
-            for (int i = 0; i < grad_m.rows(); ++i) {
-                for (int j = 0; j < grad_m.cols(); ++j) {
-                    mu(i) += grad_m(i, j);
-                }
-            }
+            la::cpu::vector<double> one;
+            one.resize(grad_m.cols(), 1);
+
+            la::cpu::mul(mu, grad_m, one);
 
             for (int i = 0; i < grad_m.rows(); ++i) {
                 for (int j = 0; j < grad_m.cols(); ++j) {
@@ -209,15 +184,15 @@ namespace autodiff {
             }
         }
 
-        void corr_linearize(la::tensor_like<double>& result,
-            la::tensor_like<double> const& u,
+        void corr_linearize(la::cpu::tensor_like<double>& result,
+            la::cpu::tensor_like<double> const& u,
             int f1, int f2)
         {
             assert(u.dim() >= 2);
 
             unsigned int d3 = u.vec_size() / (u.size(0) * u.size(1));
 
-            la::weak_tensor<double> u3 { const_cast<double*>(u.data()), { u.size(0), u.size(1), d3 } };
+            la::cpu::weak_tensor<double> u3 { const_cast<double*>(u.data()), { u.size(0), u.size(1), d3 } };
 
             int z = 0;
 
@@ -252,15 +227,15 @@ namespace autodiff {
             }
         }
 
-        void corr_linearize_grad(la::tensor_like<double>& result,
-            la::tensor_like<double> const& u,
+        void corr_linearize_grad(la::cpu::tensor_like<double>& result,
+            la::cpu::tensor_like<double> const& u,
             int f1, int f2)
         {
             assert(result.dim() >= 3);
 
             unsigned int d3 = result.vec_size() / (result.size(0) * result.size(1));
 
-            la::weak_tensor<double> result3 { result.data(), { result.size(0), result.size(1), d3 } };
+            la::cpu::weak_tensor<double> result3 { result.data(), { result.size(0), result.size(1), d3 } };
 
             int z = 0;
 

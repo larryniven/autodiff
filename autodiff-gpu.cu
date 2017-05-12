@@ -10,6 +10,35 @@ namespace autodiff {
 
     namespace gpu {
 
+        void weak_var_eval(std::shared_ptr<op_t> t)
+        {
+            int shift;
+            std::vector<unsigned int> sizes;
+
+            std::tie(shift, sizes) = *std::static_pointer_cast<
+                std::pair<int, std::vector<unsigned int>>>(t->data);
+
+            auto ch = get_child(t, 0);
+
+            auto& v = get_output<la::gpu::tensor_like<double>>(ch);
+            la::gpu::weak_tensor<double> w_v { v.data() + shift, sizes };
+            t->output = std::make_shared<la::gpu::weak_tensor<double>>(w_v);
+
+            if (ch->grad == nullptr) {
+                la::gpu::tensor<double> g;
+                g.resize(v.sizes());
+                ch->grad = std::make_shared<la::gpu::tensor<double>>(std::move(g));
+            }
+
+            auto& g = get_grad<la::gpu::tensor_like<double>>(ch);
+            la::gpu::weak_tensor<double> w_g { g.data() + shift, sizes };
+            t->grad = std::make_shared<la::gpu::weak_tensor<double>>(w_g);
+        }
+
+        void weak_var_grad(std::shared_ptr<op_t> t)
+        {
+        }
+
         void mul_eval(std::shared_ptr<op_t> t)
         {
             auto& a = get_output<la::gpu::tensor_like<double>>(get_child(t, 0));
@@ -461,7 +490,7 @@ namespace autodiff {
             std::tie(prob, gen) = *std::static_pointer_cast<
                 std::tuple<double, std::default_random_engine*>>(t->data);
 
-            la::tensor<double> w;
+            la::cpu::tensor<double> w;
             w.resize(u.sizes());
 
             std::bernoulli_distribution bernoulli { 1 - prob };

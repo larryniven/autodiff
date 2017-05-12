@@ -301,16 +301,7 @@ namespace autodiff {
             {
                 assert(u.vec_size() == v.vec_size());
 
-                unsigned int rows;
-                unsigned int cols;
-
-                if (v.dim() == 1) {
-                    rows = 1;
-                    cols = v.vec_size();
-                } else {
-                    rows = v.size(0);
-                    cols = v.vec_size() / v.size(0);
-                }
+                la::gpu::matrix_like<double> const& m = v.as_matrix();
 
                 double inf = std::numeric_limits<double>::infinity();
 
@@ -319,10 +310,10 @@ namespace autodiff {
 
                 thrust::transform(thrust::device, thrust::make_counting_iterator(0),
                     thrust::make_counting_iterator(int(v.vec_size())),
-                    keys.data(), key_op { cols });
+                    keys.data(), key_op { m.cols() });
 
                 la::gpu::vector<double> logZ;
-                logZ.resize(rows, -inf);
+                logZ.resize(m.rows(), -inf);
 
                 thrust::reduce_by_key(thrust::device,
                     thrust::device_ptr<int>(keys.begin()),
@@ -334,17 +325,16 @@ namespace autodiff {
                     log_add_op());
 
                 la::gpu::vector<double> one;
-                one.resize(cols, 1);
+                one.resize(m.cols(), 1);
 
                 la::gpu::matrix<double> logZ_m;
-                logZ_m.resize(rows, cols);
+                logZ_m.resize(m.rows(), m.cols());
 
                 la::gpu::outer_prod(logZ_m, logZ, one);
 
-                la::gpu::weak_matrix<double> v_m {const_cast<double*>(v.data()), rows, cols};
-                la::gpu::weak_matrix<double> u_m {u.data(), rows, cols};
+                la::gpu::weak_matrix<double> u_m {u.data(), m.rows(), m.cols()};
 
-                la::gpu::iadd(u_m, v_m);
+                la::gpu::iadd(u_m, m);
                 la::gpu::isub(u_m, logZ_m);
             }
 
@@ -369,34 +359,22 @@ namespace autodiff {
             {
                 assert(grad.vec_size() == output.vec_size() && result.vec_size() == grad.vec_size());
 
-                unsigned int rows;
-                unsigned int cols;
-
-                if (grad.dim() == 1) {
-                    rows = 1;
-                    cols = grad.vec_size();
-                } else {
-                    rows = grad.size(0);
-                    cols = grad.vec_size() / grad.size(0);
-                }
+                la::gpu::matrix_like<double> const& grad_m = grad.as_matrix();
 
                 la::gpu::vector<double> one;
-                one.resize(cols, 1);
-
-                la::gpu::weak_matrix<double> grad_m {const_cast<double*>(grad.data()),
-                    rows, cols};
+                one.resize(grad_m.cols(), 1);
 
                 la::gpu::vector<double> mu;
-                mu.resize(rows);
+                mu.resize(grad_m.rows());
 
                 la::gpu::mul(mu, grad_m, one);
 
                 la::gpu::matrix<double> mu_m;
-                mu_m.resize(rows, cols);
+                mu_m.resize(grad_m.rows(), grad_m.cols());
 
                 la::gpu::outer_prod(mu_m, mu, one);
 
-                unsigned int vec_size = rows * cols;
+                unsigned int vec_size = grad.vec_size();
 
                 thrust::for_each(thrust::device,
                     thrust::make_zip_iterator(thrust::make_tuple(

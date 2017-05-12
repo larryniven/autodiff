@@ -71,6 +71,11 @@ namespace autodiff {
     inline void var_eval(std::shared_ptr<op_t> t) {};
     inline void var_grad(std::shared_ptr<op_t> t) {};
 
+    std::shared_ptr<op_t> weak_var(std::shared_ptr<op_t> t,
+        int shift, std::vector<unsigned int> sizes);
+    void weak_var_eval(std::shared_ptr<op_t> t);
+    void weak_var_grad(std::shared_ptr<op_t> t);
+
     std::shared_ptr<op_t> mul(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2);
     void mul_eval(std::shared_ptr<op_t> t);
     void mul_grad(std::shared_ptr<op_t> t);
@@ -104,6 +109,7 @@ namespace autodiff {
     void exp_eval(std::shared_ptr<op_t> t);
     void exp_grad(std::shared_ptr<op_t> t);
 
+    std::shared_ptr<op_t> add(std::shared_ptr<op_t> t, std::vector<std::shared_ptr<op_t>> ts);
     std::shared_ptr<op_t> add(std::vector<std::shared_ptr<op_t>> t);
     std::shared_ptr<op_t> add(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2);
     void add_eval(std::shared_ptr<op_t> t);
@@ -221,6 +227,7 @@ namespace autodiff {
 
     static std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> eval_funcs {
         { "var", var_eval },
+        { "weak_var", weak_var_eval },
         { "mul", mul_eval },
         { "ltmul", ltmul_eval },
         { "rtmul", rtmul_eval },
@@ -250,6 +257,7 @@ namespace autodiff {
 
     static std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> grad_funcs {
         { "var", var_grad },
+        { "weak_var", weak_var_grad },
         { "mul", mul_grad },
         { "ltmul", ltmul_grad },
         { "rtmul", rtmul_grad },
