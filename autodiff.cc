@@ -669,6 +669,9 @@ namespace autodiff {
 
         g.add_edge(t, result);
 
+        result->output = t->output;
+        result->grad = t->grad;
+
         if (!g.lazy) {
             eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
