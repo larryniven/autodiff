@@ -357,6 +357,72 @@ namespace autodiff {
             }
         }
 
+        void row_cat_eval(std::shared_ptr<op_t> t)
+        {
+            auto& g = *t->graph;
+            assert(g.adj[t->id].size() > 0);
+
+            unsigned int rows = g.adj[t->id].size();
+
+            auto& v0 = get_output<la::gpu::tensor_like<double>>(get_child(t, 0));
+
+            if (t->output == nullptr) {
+                std::vector<unsigned int> sizes = v0.sizes();
+                std::vector<unsigned int> new_sizes;
+                new_sizes.push_back(rows);
+                new_sizes.insert(new_sizes.end(), sizes.begin(), sizes.end());
+
+                la::gpu::tensor<double> z;
+                z.resize(new_sizes);
+                t->output = std::make_shared<la::gpu::tensor<double>>(std::move(z));
+            }
+
+            auto& z = get_output<la::gpu::tensor_like<double>>(t);
+
+            la::gpu::weak_matrix<double> m { z.data(), rows, v0.vec_size() };
+
+            for (int i = 0; i < m.rows(); ++i) {
+                auto& vi = get_output<la::gpu::tensor_like<double>>(get_child(t, i));
+
+                assert(vi.vec_size() == m.cols());
+
+                la::gpu::weak_tensor<double> mi (z.data() + i * m.cols(), {m.cols()});
+
+                la::gpu::copy(mi, vi);
+            }
+        }
+
+        void row_cat_grad(std::shared_ptr<op_t> t)
+        {
+            auto& g = *t->graph;
+
+            auto& z = autodiff::get_grad<la::gpu::tensor_like<double>>(t);
+
+            assert(z.size(0) == g.adj[t->id].size());
+
+            la::gpu::weak_matrix<double> m { z.data(), z.size(0), z.vec_size() / z.size(0) };
+
+            for (int i = 0; i < m.rows(); ++i) {
+                auto c = get_child(t, i);
+
+                auto& v = autodiff::get_output<la::gpu::tensor_like<double>>(c);
+
+                assert(v.vec_size() == m.cols());
+
+                if (c->grad_needed && c->grad == nullptr) {
+                    la::gpu::tensor<double> g;
+                    la::gpu::resize_as(g, v);
+                    c->grad = std::make_shared<la::gpu::tensor<double>>(std::move(g));
+                }
+
+                auto& g = autodiff::get_grad<la::gpu::tensor_like<double>>(c);
+
+                if (c->grad_needed) {
+                    la::gpu::iadd(g.as_vector(), la::gpu::weak_vector<double>(z.data() + i * m.cols(), m.cols()));
+                }
+            }
+        }
+
         void resize_as_eval(std::shared_ptr<op_t> t)
         {
             auto c = get_child(t, 0);

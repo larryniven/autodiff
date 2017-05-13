@@ -29,6 +29,9 @@ namespace autodiff {
         void logsoftmax_eval(std::shared_ptr<op_t> t);
         void logsoftmax_grad(std::shared_ptr<op_t> t);
 
+        void row_cat_eval(std::shared_ptr<op_t> t);
+        void row_cat_grad(std::shared_ptr<op_t> t);
+
         void resize_as_eval(std::shared_ptr<op_t> t);
         void resize_as_grad(std::shared_ptr<op_t> t);
 
@@ -51,6 +54,7 @@ namespace autodiff {
             { "add", add_eval },
             { "sub", sub_eval },
             { "logsoftmax", logsoftmax_eval },
+            { "row_cat", row_cat_eval },
             { "resize_as", resize_as_eval },
             { "rep_row_to", rep_row_to_eval },
             { "rep_col_to", rep_col_to_eval },
@@ -67,6 +71,7 @@ namespace autodiff {
             { "add", add_grad },
             { "sub", sub_grad },
             { "logsoftmax", logsoftmax_grad },
+            { "row_cat", row_cat_grad },
             { "resize_as", resize_as_grad },
             { "rep_row_to", rep_row_to_grad },
             { "rep_col_to", rep_col_to_grad },
