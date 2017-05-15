@@ -99,6 +99,8 @@ namespace autodiff {
         result->data = std::make_shared<std::pair<int, std::vector<unsigned int>>>(
             std::make_pair(shift, sizes));
 
+        result->grad_needed = t->grad_needed;
+
         if (!g.lazy) {
             eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
@@ -120,15 +122,17 @@ namespace autodiff {
         la::cpu::weak_tensor<double> w_v { v.data() + shift, sizes };
         t->output = std::make_shared<la::cpu::weak_tensor<double>>(w_v);
 
-        if (ch->grad == nullptr) {
+        if (ch->grad_needed && ch->grad == nullptr) {
             la::cpu::tensor<double> g;
             g.resize(v.sizes());
             ch->grad = std::make_shared<la::cpu::tensor<double>>(std::move(g));
         }
 
-        auto& g = get_grad<la::cpu::tensor_like<double>>(ch);
-        la::cpu::weak_tensor<double> w_g { g.data() + shift, sizes };
-        t->grad = std::make_shared<la::cpu::weak_tensor<double>>(w_g);
+        if (ch->grad_needed) {
+            auto& z = get_grad<la::cpu::tensor_like<double>>(ch);
+            la::cpu::weak_tensor<double> w_z { z.data() + shift, sizes };
+            t->grad = std::make_shared<la::cpu::weak_tensor<double>>(w_z);
+        }
     }
 
     void weak_var_grad(std::shared_ptr<op_t> t)
@@ -146,6 +150,8 @@ namespace autodiff {
 
         g.add_edge(result, t1);
         g.add_edge(result, t2);
+
+        result->grad_needed = (t1->grad_needed || t2->grad_needed);
 
         if (!g.lazy) {
             eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
@@ -221,6 +227,8 @@ namespace autodiff {
 
         g.add_edge(result, t1);
         g.add_edge(result, t2);
+
+        result->grad_needed = (t1->grad_needed || t2->grad_needed);
     
         if (!g.lazy) {
             eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
@@ -290,6 +298,8 @@ namespace autodiff {
         g.add_edge(result, t1);
         g.add_edge(result, t2);
     
+        result->grad_needed = (t1->grad_needed || t2->grad_needed);
+
         if (!g.lazy) {
             eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
@@ -370,6 +380,9 @@ namespace autodiff {
         result->output = s->output;
         result->grad = s->grad;
 
+        result->grad_needed = (t1->grad_needed || t2->grad_needed);
+        s->grad_needed = (s->grad_needed || result->grad_needed);
+
         g.add_edge(s, result);
     
         if (!g.lazy) {
@@ -391,6 +404,8 @@ namespace autodiff {
         g.add_edge(result, t1);
         g.add_edge(result, t2);
     
+        result->grad_needed = (t1->grad_needed || t2->grad_needed);
+
         if (!g.lazy) {
             eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
@@ -454,6 +469,8 @@ namespace autodiff {
         std::shared_ptr<op_t> result = g.make_node("logistic");
         g.add_edge(result, input);
     
+        result->grad_needed = input->grad_needed;
+
         if (!g.lazy) {
             eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
@@ -503,6 +520,8 @@ namespace autodiff {
         std::shared_ptr<op_t> result = g.make_node("relu");
         g.add_edge(result, input);
     
+        result->grad_needed = input->grad_needed;
+
         if (!g.lazy) {
             eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
@@ -552,6 +571,8 @@ namespace autodiff {
         std::shared_ptr<op_t> result = g.make_node("tanh");
         g.add_edge(result, input);
     
+        result->grad_needed = input->grad_needed;
+
         if (!g.lazy) {
             eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
@@ -601,6 +622,8 @@ namespace autodiff {
         std::shared_ptr<op_t> result = g.make_node("exp");
         g.add_edge(result, input);
     
+        result->grad_needed = input->grad_needed;
+
         if (!g.lazy) {
             eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
@@ -663,11 +686,16 @@ namespace autodiff {
 
         std::shared_ptr<op_t> result = g.make_node("add");
 
-        for (auto& t: ts) {
-            g.add_edge(result, t);
+        bool grad_needed = false;
+        for (auto& z: ts) {
+            g.add_edge(result, z);
+            grad_needed = (grad_needed || z->grad_needed);
         }
 
         g.add_edge(t, result);
+
+        result->grad_needed = grad_needed;
+        t->grad_needed = (t->grad_needed || result->grad_needed);
 
         result->output = t->output;
         result->grad = t->grad;
@@ -685,9 +713,13 @@ namespace autodiff {
 
         std::shared_ptr<op_t> result = g.make_node("add");
 
-        for (auto& t: ts) {
-            g.add_edge(result, t);
+        bool grad_needed = false;
+        for (auto& z: ts) {
+            g.add_edge(result, z);
+            grad_needed = (grad_needed || z->grad_needed);
         }
+
+        result->grad_needed = grad_needed;
 
         if (!g.lazy) {
             eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
@@ -705,6 +737,8 @@ namespace autodiff {
         g.add_edge(result, t1);
         g.add_edge(result, t2);
     
+        result->grad_needed = (t1->grad_needed || t2->grad_needed);
+
         if (!g.lazy) {
             eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
@@ -777,6 +811,8 @@ namespace autodiff {
         g.add_edge(result, t1);
         g.add_edge(result, t2);
     
+        result->grad_needed = (t1->grad_needed || t2->grad_needed);
+
         if (!g.lazy) {
             eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
@@ -841,6 +877,8 @@ namespace autodiff {
         std::shared_ptr<op_t> result = g.make_node("norm");
         g.add_edge(result, t);
     
+        result->grad_needed = t->grad_needed;
+
         if (!g.lazy) {
             eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
@@ -882,6 +920,8 @@ namespace autodiff {
         std::shared_ptr<op_t> result = g.make_node("softmax");
         g.add_edge(result, t);
     
+        result->grad_needed = t->grad_needed;
+
         if (!g.lazy) {
             eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
@@ -931,6 +971,8 @@ namespace autodiff {
         std::shared_ptr<op_t> result = g.make_node("logsoftmax");
         g.add_edge(result, t);
     
+        result->grad_needed = t->grad_needed;
+
         if (!g.lazy) {
             eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
@@ -982,6 +1024,8 @@ namespace autodiff {
         g.add_edge(result, t1);
         g.add_edge(result, t2);
     
+        result->grad_needed = (t1->grad_needed || t2->grad_needed);
+
         if (!g.lazy) {
             eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
@@ -1040,9 +1084,13 @@ namespace autodiff {
 
         std::shared_ptr<op_t> result = g.make_node("row_cat");
 
+        bool grad_needed = false;
         for (auto& v: row_vecs) {
             g.add_edge(result, v);
+            grad_needed = (grad_needed || v->grad_needed);
         }
+
+        result->grad_needed = grad_needed;
 
         if (!g.lazy) {
             eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
@@ -1129,9 +1177,13 @@ namespace autodiff {
 
         std::shared_ptr<op_t> result = g.make_node("col_cat");
 
+        bool grad_needed = false;
         for (auto& v: col_vecs) {
             g.add_edge(result, v);
+            grad_needed = (grad_needed || v->grad_needed);
         }
+
+        result->grad_needed = grad_needed;
 
         if (!g.lazy) {
             eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
@@ -1212,6 +1264,8 @@ namespace autodiff {
         result->data = std::make_shared<unsigned int>(i);
     
         g.add_edge(result, t);
+
+        result->grad_needed = t->grad_needed;
     
         if (!g.lazy) {
             eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
@@ -1267,6 +1321,8 @@ namespace autodiff {
         result->data = std::make_shared<std::vector<unsigned int>>(sizes);
     
         g.add_edge(result, t);
+
+        result->grad_needed = t->grad_needed;
     
         if (!g.lazy) {
             eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
@@ -1361,6 +1417,8 @@ namespace autodiff {
     
         g.add_edge(result, t1);
         g.add_edge(result, t2);
+
+        result->grad_needed = t1->grad_needed;
     
         if (!g.lazy) {
             eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
@@ -1432,6 +1490,8 @@ namespace autodiff {
         g.add_edge(result, t1);
         g.add_edge(result, t2);
     
+        result->grad_needed = t1->grad_needed;
+
         if (!g.lazy) {
             eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
@@ -1497,6 +1557,8 @@ namespace autodiff {
         g.add_edge(result, t1);
         g.add_edge(result, t2);
 
+        result->grad_needed = t1->grad_needed;
+
         if (!g.lazy) {
             eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
@@ -1558,6 +1620,8 @@ namespace autodiff {
     
         g.add_edge(result, t);
     
+        result->grad_needed = t->grad_needed;
+
         if (!g.lazy) {
             eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
@@ -1629,6 +1693,8 @@ namespace autodiff {
     
         g.add_edge(result, t);
     
+        result->grad_needed = t->grad_needed;
+
         if (!g.lazy) {
             eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
@@ -1708,6 +1774,8 @@ namespace autodiff {
             std::make_tuple(prob, &gen));
 
         g.add_edge(result, t);
+
+        result->grad_needed = false;
 
         if (!g.lazy) {
             eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);

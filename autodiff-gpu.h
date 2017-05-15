@@ -8,6 +8,9 @@ namespace autodiff {
 
     namespace gpu {
 
+        void weak_var_eval(std::shared_ptr<op_t> t);
+        void weak_var_grad(std::shared_ptr<op_t> t);
+
         void mul_eval(std::shared_ptr<op_t> t);
         void mul_grad(std::shared_ptr<op_t> t);
 

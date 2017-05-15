@@ -24,15 +24,17 @@ namespace autodiff {
             la::gpu::weak_tensor<double> w_v { v.data() + shift, sizes };
             t->output = std::make_shared<la::gpu::weak_tensor<double>>(w_v);
 
-            if (ch->grad == nullptr) {
+            if (ch->grad_needed && ch->grad == nullptr) {
                 la::gpu::tensor<double> g;
                 g.resize(v.sizes());
                 ch->grad = std::make_shared<la::gpu::tensor<double>>(std::move(g));
             }
 
-            auto& g = get_grad<la::gpu::tensor_like<double>>(ch);
-            la::gpu::weak_tensor<double> w_g { g.data() + shift, sizes };
-            t->grad = std::make_shared<la::gpu::weak_tensor<double>>(w_g);
+            if (ch->grad_needed) {
+                auto& z = get_grad<la::gpu::tensor_like<double>>(ch);
+                la::gpu::weak_tensor<double> w_z { z.data() + shift, sizes };
+                t->grad = std::make_shared<la::gpu::weak_tensor<double>>(w_z);
+            }
         }
 
         void weak_var_grad(std::shared_ptr<op_t> t)
