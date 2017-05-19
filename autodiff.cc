@@ -1344,14 +1344,6 @@ namespace autodiff {
 
         la::cpu::weak_tensor<double> result { input.data(), sizes };
         t->output = std::make_shared<la::cpu::weak_tensor<double>>(result);
-    }
-
-    void reshape_grad(std::shared_ptr<op_t> t)
-    {
-        std::vector<unsigned int>& sizes = *std::static_pointer_cast<std::vector<unsigned int>>(t->data);
-
-        auto c = get_child(t, 0);
-        auto& input = get_output<la::cpu::tensor_like<double>>(c);
 
         if (c->grad_needed && c->grad == nullptr) {
             la::cpu::tensor<double> g;
@@ -1359,17 +1351,15 @@ namespace autodiff {
             c->grad = std::make_shared<la::cpu::tensor<double>>(std::move(g));
         }
 
-        auto& output_grad = get_grad<la::cpu::tensor_like<double>>(t);
-        auto& input_grad = get_grad<la::cpu::tensor_like<double>>(c);
-
         if (c->grad_needed) {
-            double const *output_grad_data = output_grad.data();
-            double *input_grad_data = input_grad.data();
-
-            for (int i = 0; i < output_grad.vec_size(); ++i) {
-                input_grad_data[i] += output_grad_data[i];
-            }
+            auto& g = autodiff::get_grad<la::cpu::tensor_like<double>>(c);
+            la::cpu::weak_tensor<double> wg { g.data(), sizes };
+            t->grad = std::make_shared<la::cpu::weak_tensor<double>>(wg);
         }
+    }
+
+    void reshape_grad(std::shared_ptr<op_t> t)
+    {
     }
 
     std::shared_ptr<op_t> resize_as(std::shared_ptr<op_t> const& t, double value)

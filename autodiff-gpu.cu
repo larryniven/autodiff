@@ -425,6 +425,37 @@ namespace autodiff {
             }
         }
 
+        void reshape_eval(std::shared_ptr<op_t> t)
+        {
+            std::vector<unsigned int>& sizes = *std::static_pointer_cast<std::vector<unsigned int>>(t->data);
+            la::gpu::tensor_like<double>& input = get_output<la::gpu::tensor_like<double>>(get_child(t, 0));
+
+            unsigned int d = (sizes.size() == 0 ? 0 : 1);
+            for (int i = 0; i < sizes.size(); ++i) {
+                d *= sizes[i];
+            }
+            assert(d <= input.vec_size());
+
+            la::gpu::weak_tensor<double> result { input.data(), sizes };
+            t->output = std::make_shared<la::gpu::weak_tensor<double>>(result);
+
+            if (c->grad_needed && c->grad == nullptr) {
+                la::gpu::tensor<double> g;
+                la::gpu::resize_as(g, input);
+                c->grad = std::make_shared<la::gpu::tensor<double>>(std::move(g));
+            }
+
+            if (c->grad_needed) {
+                auto& g = autodiff::get_grad<la::gpu::tensor_like<double>>(c);
+                la::gpu::weak_tensor<double> wg { g.data(), sizes };
+                t->grad = std::make_shared<la::gpu::weak_tensor<double>>(wg);
+            }
+        }
+
+        void reshape_grad(std::shared_ptr<op_t> t)
+        {
+        }
+
         void resize_as_eval(std::shared_ptr<op_t> t)
         {
             auto c = get_child(t, 0);
