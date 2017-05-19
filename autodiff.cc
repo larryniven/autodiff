@@ -1333,8 +1333,12 @@ namespace autodiff {
 
     void reshape_eval(std::shared_ptr<op_t> t)
     {
-        std::vector<unsigned int>& sizes = *std::static_pointer_cast<std::vector<unsigned int>>(t->data);
-        la::cpu::tensor_like<double>& input = get_output<la::cpu::tensor_like<double>>(get_child(t, 0));
+        std::vector<unsigned int>& sizes
+            = *std::static_pointer_cast<std::vector<unsigned int>>(t->data);
+
+        auto c = get_child(t, 0);
+
+        la::cpu::tensor_like<double>& input = get_output<la::cpu::tensor_like<double>>(c);
 
         unsigned int d = (sizes.size() == 0 ? 0 : 1);
         for (int i = 0; i < sizes.size(); ++i) {
