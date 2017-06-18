@@ -39,7 +39,7 @@ namespace autodiff {
 
         void corr_linearize_grad(la::cpu::tensor_like<double>& result,
             la::cpu::tensor_like<double> const& u,
-            int f1, int f2);
+            int f1, int f2, int d1, int d2);
     }
 }
 

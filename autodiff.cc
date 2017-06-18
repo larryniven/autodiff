@@ -1542,7 +1542,7 @@ namespace autodiff {
         }
     }
 
-    std::shared_ptr<op_t> corr_linearize(std::shared_ptr<op_t> const& t1, std::shared_ptr<op_t> t2)
+    std::shared_ptr<op_t> corr_linearize(std::shared_ptr<op_t> const& t1, std::shared_ptr<op_t> t2, int d1, int d2)
     {
         auto& g = *t1->graph;
 
@@ -1553,6 +1553,8 @@ namespace autodiff {
 
         result->grad_needed = t1->grad_needed;
 
+        result->data = std::make_shared<std::pair<int, int>>(std::make_pair(d1, d2));
+
         if (!g.lazy) {
             eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
         }
@@ -1560,10 +1562,17 @@ namespace autodiff {
         return result;
     }
 
+    std::shared_ptr<op_t> corr_linearize(std::shared_ptr<op_t> const& t1, std::shared_ptr<op_t> t2)
+    {
+        return corr_linearize(t1, t2, 1, 1);
+    }
+
     void corr_linearize_eval(std::shared_ptr<op_t> t)
     {
         auto& u = get_output<la::cpu::tensor_like<double>>(get_child(t, 0));
         auto& v = get_output<la::cpu::tensor_like<double>>(get_child(t, 1));
+
+        std::pair<int, int>& d = *std::static_pointer_cast<std::pair<int, int>>(t->data);
 
         la::cpu::weak_matrix<double> v_mat = v.as_matrix();
 
@@ -1574,13 +1583,15 @@ namespace autodiff {
         }
 
         la::cpu::tensor_like<double>& w = get_output<la::cpu::tensor_like<double>>(t);
-        la::cpu::corr_linearize(w, u, v.size(0), v.size(1));
+        la::cpu::corr_linearize(w, u, v.size(0), v.size(1), d.first, d.second);
     }
 
     void corr_linearize_grad(std::shared_ptr<op_t> t)
     {
         auto& u = get_output<la::cpu::tensor_like<double>>(get_child(t, 0));
         auto& v = get_output<la::cpu::tensor_like<double>>(get_child(t, 1));
+
+        std::pair<int, int>& d = *std::static_pointer_cast<std::pair<int, int>>(t->data);
 
         la::cpu::weak_matrix<double> v_mat = v.as_matrix();
 
@@ -1596,7 +1607,7 @@ namespace autodiff {
         auto& g_u = get_grad<la::cpu::tensor_like<double>>(u_op);
 
         if (u_op->grad_needed) {
-            op::corr_linearize_grad(g_u, g_w, v.size(0), v.size(1));
+            op::corr_linearize_grad(g_u, g_w, v.size(0), v.size(1), d.first, d.second);
         }
     }
 

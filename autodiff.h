@@ -7,6 +7,7 @@
 #include <unordered_set>
 #include <cmath>
 #include <random>
+#include <functional>
 
 namespace autodiff {
 
@@ -163,6 +164,7 @@ namespace autodiff {
     void rep_col_to_eval(std::shared_ptr<op_t> t);
     void rep_col_to_grad(std::shared_ptr<op_t> t);
 
+    std::shared_ptr<op_t> corr_linearize(std::shared_ptr<op_t> const& t1, std::shared_ptr<op_t> t2, int d1, int d2);
     std::shared_ptr<op_t> corr_linearize(std::shared_ptr<op_t> const& t1, std::shared_ptr<op_t> t2);
     void corr_linearize_eval(std::shared_ptr<op_t> t);
     void corr_linearize_grad(std::shared_ptr<op_t> t);
