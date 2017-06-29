@@ -383,7 +383,7 @@ namespace autodiff {
         result->grad_needed = (t1->grad_needed || t2->grad_needed);
         s->grad_needed = (s->grad_needed || result->grad_needed);
 
-        g.add_edge(s, result);
+        g.add_edge(result, s);
     
         if (!g.lazy) {
             eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
@@ -692,7 +692,7 @@ namespace autodiff {
             grad_needed = (grad_needed || z->grad_needed);
         }
 
-        g.add_edge(t, result);
+        g.add_edge(result, t);
 
         result->grad_needed = grad_needed;
         t->grad_needed = (t->grad_needed || result->grad_needed);

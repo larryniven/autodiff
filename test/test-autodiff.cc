@@ -18,8 +18,6 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
 
         auto t = autodiff::mul(x_var, A_var);
 
-        // autodiff::eval(t, autodiff::eval_funcs);
-
         la::cpu::tensor_like<double>& result = autodiff::get_output<la::cpu::tensor_like<double>>(t);
 
         ebt::assert_equals(9, result({0}));
@@ -153,8 +151,6 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
 
         auto c = autodiff::corr(g.var(u_t), g.var(v_t));
 
-        // autodiff::eval(c, autodiff::eval_funcs);
-
         auto& o = autodiff::get_output<la::cpu::tensor_like<double>>(c);
 
         ebt::assert_equals(3, o.dim());
@@ -199,7 +195,6 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
         auto var_u = g.var(u_t);
         auto var_v = g.var(v_t);
         auto c = autodiff::corr(var_u, var_v);
-        // autodiff::eval(c, autodiff::eval_funcs);
 
         auto& o = autodiff::get_output<la::cpu::tensor<double>>(c);
         double tmp = o({0, 0, 0});
@@ -247,8 +242,6 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
         la::cpu::weak_tensor<double> f {v.data(), {3, 3, 2, 1}};
 
         auto c = autodiff::corr(g.var(t), g.var(f));
-
-        // autodiff::eval(c, autodiff::eval_funcs);
 
         auto& o = autodiff::get_output<la::cpu::tensor_like<double>>(c);
 
@@ -300,8 +293,6 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
         auto var_v = g.var(v_t);
         auto c = autodiff::corr(var_u, var_v);
 
-        // autodiff::eval(c, autodiff::eval_funcs);
-
         la::cpu::weak_tensor<double> grad_t { grad.data(), {5, 5, 1} };
         c->grad = std::make_shared<la::cpu::weak_tensor<double>>(grad_t);
         autodiff::grad(c, autodiff::grad_funcs);
@@ -352,8 +343,6 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
         la::cpu::weak_tensor<double> f {v.data(), {3, 3, 2, 2}};
 
         auto c = autodiff::corr(g.var(t), g.var(f));
-
-        // autodiff::eval(c, autodiff::eval_funcs);
 
         auto& o = autodiff::get_output<la::cpu::tensor_like<double>>(c);
 
@@ -417,8 +406,6 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
         auto var_v = g.var(v_t);
         auto c = autodiff::corr(var_u, var_v);
 
-        // autodiff::eval(c, autodiff::eval_funcs);
-
         la::cpu::weak_tensor<double> grad_t { grad.data(), {5, 5, 2} };
         c->grad = std::make_shared<la::cpu::weak_tensor<double>>(grad_t);
 
@@ -450,8 +437,6 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
 
         auto op = autodiff::dropout_mask(g.var(u_t), 0.0, gen);
 
-        // autodiff::eval(op, autodiff::eval_funcs);
-
         auto& result = autodiff::get_output<la::cpu::tensor_like<double>>(op);
 
         ebt::assert_equals(6, result.vec_size());
@@ -482,8 +467,6 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
 
         auto op = autodiff::emul(g.var(u_t), g.var(v_t));
 
-        // autodiff::eval(op, autodiff::eval_funcs);
-
         auto& result = autodiff::get_output<la::cpu::tensor_like<double>>(op);
 
         ebt::assert_equals(2, result.dim());
@@ -510,8 +493,6 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
 
         auto u_op = g.var(u_t);
         auto op = autodiff::emul(u_op, autodiff::dropout_mask(u_op, 0.0, gen));
-
-        // autodiff::eval(op, autodiff::eval_funcs);
 
         auto& result = autodiff::get_output<la::cpu::tensor_like<double>>(op);
 
