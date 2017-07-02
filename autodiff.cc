@@ -139,6 +139,113 @@ namespace autodiff {
     {
     }
 
+    std::shared_ptr<op_t> subtensor(std::shared_ptr<op_t> t,
+        std::vector<int> shift,
+        std::vector<unsigned int> sizes)
+    {
+        assert(shift.size() == sizes.size());
+
+        auto& g = *t->graph;
+
+        std::shared_ptr<op_t> result = g.make_node("subtensor");
+
+        g.add_edge(result, t);
+
+        result->grad_needed = t->grad_needed;
+
+        result->data = std::make_shared<std::pair<std::vector<int>,
+            std::vector<unsigned int>>>(std::make_pair(shift, sizes));
+
+        if (!g.lazy) {
+            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+        }
+
+        return result;
+    }
+
+    template <class T>
+    void inc(std::vector<T>& indices, std::vector<T> const& bound, std::vector<T> const& shift)
+    {
+        assert(indices.size() == bound.size());
+
+        int i = 0;
+        while (i < indices.size() && indices[i] + 1 >= bound[i]) {
+            indices[i] = shift[i];
+            ++i;
+        }
+
+        if (i < indices.size()) {
+            ++indices[i];
+        }
+    }
+
+    void subtensor_eval(std::shared_ptr<op_t> t)
+    {
+        auto& a = get_output<la::cpu::tensor_like<double>>(get_child(t, 0));
+
+        auto& data = *std::static_pointer_cast<std::pair<std::vector<int>,
+            std::vector<unsigned int>>>(t->data);
+
+        assert(a.dim() == data.first.size());
+
+        for (int i = 0; i < data.first.size(); ++i) {
+            assert(data.first[i] + data.second[i] <= a.size(i));
+        }
+
+        if (t->output == nullptr) {
+            la::cpu::tensor<double> c;
+            c.resize(data.second);
+            t->output = std::make_shared<la::cpu::tensor<double>>(std::move(c));
+        }
+
+        auto& c = get_output<la::cpu::tensor_like<double>>(t);
+
+        std::vector<int> indices = data.first;
+        std::vector<int> bound;
+        bound.resize(indices.size());
+
+        for (int i = 0; i < c.dim(); ++i) {
+            bound[i] = data.first[i] + data.second[i];
+        }
+
+        for (int i = 0; i < c.vec_size(); ++i) {
+            c.data()[i] = a(indices);
+            inc(indices, bound, data.first);
+        }
+    }
+
+    void subtensor_grad(std::shared_ptr<op_t> t)
+    {
+        auto ch = get_child(t, 0);
+
+        auto& a = get_output<la::cpu::tensor_like<double>>(ch);
+
+        auto& data = *std::static_pointer_cast<std::pair<std::vector<int>,
+            std::vector<unsigned int>>>(t->data);
+
+        if (ch->grad == nullptr) {
+            la::cpu::tensor<double> c;
+            c.resize(a.sizes());
+            ch->grad = std::make_shared<la::cpu::tensor<double>>(std::move(c));
+        }
+
+        auto& ch_grad = get_grad<la::cpu::tensor_like<double>>(ch);
+        auto& t_grad = get_grad<la::cpu::tensor_like<double>>(t);
+
+        std::vector<int> indices = data.first;
+        std::vector<int> bound;
+        bound.resize(indices.size());
+
+        for (int i = 0; i < t_grad.dim(); ++i) {
+            bound[i] = data.first[i] + data.second[i];
+        }
+
+        for (int i = 0; i < t_grad.vec_size(); ++i) {
+            ch_grad(indices) += t_grad.data()[i];
+            inc(indices, bound, data.first);
+        }
+    }
+
     std::shared_ptr<op_t> mul(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2)
     {
         assert(t1->graph == t2->graph);
@@ -756,9 +863,10 @@ namespace autodiff {
             if (get_output<la::cpu::tensor_like<double>>(get_child(t, i-1)).vec_size()
                     != get_output<la::cpu::tensor_like<double>>(get_child(t, i)).vec_size())
             {
-                std::cerr << get_output<la::cpu::tensor_like<double>>(get_child(t, i-1)).vec_size()
-                    << " != " << get_output<la::cpu::tensor_like<double>>(get_child(t, i)).vec_size() << std::endl;
-                exit(1);
+                std::ostringstream oss;
+                oss << get_output<la::cpu::tensor_like<double>>(get_child(t, i-1)).vec_size()
+                    << " != " << get_output<la::cpu::tensor_like<double>>(get_child(t, i)).vec_size();
+                throw std::logic_error(oss.str());
             }
         }
 
@@ -1076,6 +1184,39 @@ namespace autodiff {
         if (c1->grad_needed) {
             axpy(u_grad, grad, v);
         }
+    }
+
+    std::shared_ptr<op_t> weak_cat(std::vector<std::shared_ptr<op_t>> const& ts,
+        std::shared_ptr<op_t> storage)
+    {
+        auto& g = *storage->graph;
+
+        std::shared_ptr<op_t> result = g.make_node("weak_cat");
+
+        result->grad_needed = false;
+
+        for (auto& t: ts) {
+            g.add_edge(result, t);
+
+            result->grad_needed = result->grad_needed || t->grad_needed;
+        }
+
+        result->output = storage->output;
+        result->grad = storage->grad;
+
+        if (!g.lazy) {
+            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+        }
+
+        return result;
+    }
+
+    void weak_cat_eval(std::shared_ptr<op_t> t)
+    {
+    }
+
+    void weak_cat_grad(std::shared_ptr<op_t> t)
+    {
     }
 
     std::shared_ptr<op_t> row_cat(std::vector<std::shared_ptr<op_t>> const& row_vecs)
@@ -1888,15 +2029,13 @@ namespace autodiff {
                 }
             } else if (a == action_t::color_black) {
                 if (color[t->id] != color_t::grey) {
-                    std::cerr << "invalid color" << std::endl;
-                    exit(1);
+                    throw std::logic_error("invalid color");
                 }
 
                 color[t->id] = color_t::black;
                 order.push_back(t);
             } else {
-                std::cerr << "unknown action" << std::endl; 
-                exit(1);
+                throw std::logic_error("unknown action");
             }
         }
 

@@ -77,6 +77,12 @@ namespace autodiff {
     void weak_var_eval(std::shared_ptr<op_t> t);
     void weak_var_grad(std::shared_ptr<op_t> t);
 
+    std::shared_ptr<op_t> subtensor(std::shared_ptr<op_t> t,
+        std::vector<int> shift,
+        std::vector<unsigned int> sizes);
+    void subtensor_eval(std::shared_ptr<op_t> t);
+    void subtensor_grad(std::shared_ptr<op_t> t);
+
     std::shared_ptr<op_t> mul(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2);
     void mul_eval(std::shared_ptr<op_t> t);
     void mul_grad(std::shared_ptr<op_t> t);
@@ -135,6 +141,11 @@ namespace autodiff {
     std::shared_ptr<op_t> dot(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2);
     void dot_eval(std::shared_ptr<op_t> t);
     void dot_grad(std::shared_ptr<op_t> t);
+
+    std::shared_ptr<op_t> weak_cat(std::vector<std::shared_ptr<op_t>> const& ts,
+        std::shared_ptr<op_t> storage);
+    void weak_cat_eval(std::shared_ptr<op_t> t);
+    void weak_cat_grad(std::shared_ptr<op_t> t);
 
     std::shared_ptr<op_t> row_cat(std::vector<std::shared_ptr<op_t>> const& row_vecs);
     void row_cat_eval(std::shared_ptr<op_t> t);
@@ -230,6 +241,7 @@ namespace autodiff {
     static std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> eval_funcs {
         { "var", var_eval },
         { "weak_var", weak_var_eval },
+        { "subtensor", subtensor_eval },
         { "mul", mul_eval },
         { "ltmul", ltmul_eval },
         { "rtmul", rtmul_eval },
@@ -244,6 +256,7 @@ namespace autodiff {
         { "softmax", softmax_eval },
         { "logsoftmax", logsoftmax_eval },
         { "dot", dot_eval },
+        { "weak_cat", weak_cat_eval },
         { "row_cat", row_cat_eval },
         { "col_cat", col_cat_eval },
         { "row_at", row_at_eval },
@@ -260,6 +273,7 @@ namespace autodiff {
     static std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> grad_funcs {
         { "var", var_grad },
         { "weak_var", weak_var_grad },
+        { "subtensor", subtensor_grad },
         { "mul", mul_grad },
         { "ltmul", ltmul_grad },
         { "rtmul", rtmul_grad },
@@ -274,6 +288,7 @@ namespace autodiff {
         { "softmax", softmax_grad },
         { "logsoftmax", logsoftmax_grad },
         { "dot", dot_grad },
+        { "weak_cat", weak_cat_eval },
         { "row_cat", row_cat_grad },
         { "col_cat", col_cat_grad },
         { "row_at", row_at_grad },
