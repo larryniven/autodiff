@@ -1683,7 +1683,8 @@ namespace autodiff {
         }
     }
 
-    std::shared_ptr<op_t> corr_linearize(std::shared_ptr<op_t> const& t1, std::shared_ptr<op_t> t2, int d1, int d2)
+    std::shared_ptr<op_t> corr_linearize(std::shared_ptr<op_t> const& t1, std::shared_ptr<op_t> t2,
+        int p1, int p2, int d1, int d2)
     {
         auto& g = *t1->graph;
 
@@ -1694,7 +1695,8 @@ namespace autodiff {
 
         result->grad_needed = t1->grad_needed;
 
-        result->data = std::make_shared<std::pair<int, int>>(std::make_pair(d1, d2));
+        result->data = std::make_shared<std::tuple<int, int, int, int>>(
+            std::make_tuple(p1, p2, d1, d2));
 
         if (!g.lazy) {
             eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
@@ -1705,7 +1707,7 @@ namespace autodiff {
 
     std::shared_ptr<op_t> corr_linearize(std::shared_ptr<op_t> const& t1, std::shared_ptr<op_t> t2)
     {
-        return corr_linearize(t1, t2, 1, 1);
+        return corr_linearize(t1, t2, 0, 0, 1, 1);
     }
 
     void corr_linearize_eval(std::shared_ptr<op_t> t)
@@ -1713,18 +1715,24 @@ namespace autodiff {
         auto& u = get_output<la::cpu::tensor_like<double>>(get_child(t, 0));
         auto& v = get_output<la::cpu::tensor_like<double>>(get_child(t, 1));
 
-        std::pair<int, int>& d = *std::static_pointer_cast<std::pair<int, int>>(t->data);
+        int p1;
+        int p2;
+        int d1;
+        int d2;
+        std::tie(p1, p2, d1, d2) = *std::static_pointer_cast<std::tuple<int, int, int, int>>(t->data);
 
         la::cpu::weak_matrix<double> v_mat = v.as_matrix();
 
         if (t->output == nullptr) {
             la::cpu::tensor<double> w;
-            w.resize(std::vector<unsigned int> { u.size(0), u.size(1), v_mat.rows() });
+            w.resize(std::vector<unsigned int> {
+                u.size(0) - v.size(0) + 1 + 2 * p1,
+                u.size(1) - v.size(1) + 1 + 2 * p2, v_mat.rows() });
             t->output = std::make_shared<la::cpu::tensor<double>>(std::move(w));
         }
 
         la::cpu::tensor_like<double>& w = get_output<la::cpu::tensor_like<double>>(t);
-        la::cpu::corr_linearize(w, u, v.size(0), v.size(1), d.first, d.second);
+        la::cpu::corr_linearize(w, u, v.size(0), v.size(1), p1, p2, d1, d2);
     }
 
     void corr_linearize_grad(std::shared_ptr<op_t> t)
@@ -1732,9 +1740,11 @@ namespace autodiff {
         auto& u = get_output<la::cpu::tensor_like<double>>(get_child(t, 0));
         auto& v = get_output<la::cpu::tensor_like<double>>(get_child(t, 1));
 
-        std::pair<int, int>& d = *std::static_pointer_cast<std::pair<int, int>>(t->data);
-
-        la::cpu::weak_matrix<double> v_mat = v.as_matrix();
+        int p1;
+        int p2;
+        int d1;
+        int d2;
+        std::tie(p1, p2, d1, d2) = *std::static_pointer_cast<std::tuple<int, int, int, int>>(t->data);
 
         auto u_op = get_child(t, 0);
 
@@ -1748,7 +1758,7 @@ namespace autodiff {
         auto& g_u = get_grad<la::cpu::tensor_like<double>>(u_op);
 
         if (u_op->grad_needed) {
-            op::corr_linearize_grad(g_u, g_w, v.size(0), v.size(1), d.first, d.second);
+            op::corr_linearize_grad(g_u, g_w, v.size(0), v.size(1), p1, p2, d1, d2);
         }
     }
 
@@ -1756,6 +1766,89 @@ namespace autodiff {
     {
         auto t = corr_linearize(t1, t2);
         return mul(t, t2);
+    }
+
+    std::shared_ptr<op_t> pool_max(std::shared_ptr<op_t> t, int d1, int d2, int s1, int s2)
+    {
+        auto& g = *t->graph;
+    
+        std::shared_ptr<op_t> result = g.make_node("pool_max");
+    
+        g.add_edge(result, t);
+    
+        result->grad_needed = t->grad_needed;
+
+        result->data = std::make_shared<std::tuple<
+            la::cpu::tensor<double>, int, int, int, int>>(
+                la::cpu::tensor<double>(), d1, d2, s1, s2);
+
+        if (!g.lazy) {
+            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+        }
+    
+        return result;
+    }
+
+    void pool_max_eval(std::shared_ptr<op_t> t)
+    {
+        int d1;
+        int d2;
+        int s1;
+        int s2;
+
+        std::tie(std::ignore, d1, d2, s1, s2) = *std::static_pointer_cast<
+            std::tuple<la::cpu::tensor<double>, int, int, int, int>>(t->data);
+
+        la::cpu::tensor<double>& indices = std::get<0>(*std::static_pointer_cast<
+            std::tuple<la::cpu::tensor<double>, int, int, int, int>>(t->data));
+
+        auto& input = get_output<la::cpu::tensor_like<double>>(get_child(t, 0));
+
+        if (t->output == nullptr) {
+            la::cpu::tensor<double> z;
+            z.resize(std::vector<unsigned int> {
+                input.size(0) % s1 == 0 ? input.size(0) / s1 : input.size(0) / s1 + 1,
+                input.size(1) % s2 == 0 ? input.size(1) / s2 : input.size(1) / s2 + 1,
+                input.size(2) }, -std::numeric_limits<double>::infinity());
+            t->output = std::make_shared<la::cpu::tensor<double>>(z);
+
+            indices.resize(z.sizes());
+        }
+
+        auto& output = get_output<la::cpu::tensor_like<double>>(t);
+
+        op::pool_max(indices, output, input, d1, d2, s1, d2);
+    }
+
+    void pool_max_grad(std::shared_ptr<op_t> t)
+    {
+        int d1;
+        int d2;
+        int s1;
+        int s2;
+
+        std::tie(std::ignore, d1, d2, s1, s2) = *std::static_pointer_cast<
+            std::tuple<la::cpu::tensor<double>, int, int, int, int>>(t->data);
+
+        la::cpu::tensor<double>& indices = std::get<0>(*std::static_pointer_cast<
+            std::tuple<la::cpu::tensor<double>, int, int, int, int>>(t->data));
+
+        auto ch = get_child(t, 0);
+        auto& output = get_output<la::cpu::tensor_like<double>>(t);
+        auto& input = get_output<la::cpu::tensor_like<double>>(ch);
+
+        if (ch->grad_needed && ch->grad == nullptr) {
+            la::cpu::tensor<double> g;
+            g.resize(input.sizes());
+            ch->grad = std::make_shared<la::cpu::tensor<double>>(g);
+        }
+
+        auto& ch_grad = get_grad<la::cpu::tensor_like<double>>(ch);
+        auto& grad = get_grad<la::cpu::tensor_like<double>>(t);
+
+        if (ch->grad_needed) {
+            op::pool_max_grad(ch_grad, grad, indices, d1, d2, s1, s2);
+        }
     }
 
     std::shared_ptr<op_t> seg_max(std::shared_ptr<op_t> t)

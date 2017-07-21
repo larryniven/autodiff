@@ -39,7 +39,18 @@ namespace autodiff {
 
         void corr_linearize_grad(la::cpu::tensor_like<double>& result,
             la::cpu::tensor_like<double> const& u,
-            int f1, int f2, int d1, int d2);
+            int f1, int f2, int p1, int p2, int d1, int d2);
+
+        void pool_max(la::cpu::tensor_like<double>& indices,
+            la::cpu::tensor_like<double>& output,
+            la::cpu::tensor_like<double> const& input,
+            int dim1, int dim2, int stride1, int stride2);
+
+        void pool_max_grad(la::cpu::tensor_like<double>& result,
+            la::cpu::tensor_like<double> const& grad,
+            la::cpu::tensor_like<double> const& indices,
+            int dim1, int dim2, int stride1, int stride2);
+
     }
 }
 

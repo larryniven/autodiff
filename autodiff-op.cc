@@ -185,45 +185,48 @@ namespace autodiff {
         }
 
         void corr_linearize_grad(la::cpu::tensor_like<double>& result,
-            la::cpu::tensor_like<double> const& u,
-            int f1, int f2, int d1, int d2)
+            la::cpu::tensor_like<double> const& grad,
+            int f1, int f2, int p1, int p2, int d1, int d2)
         {
-            assert(result.dim() >= 3);
+            assert(result.dim() == 3);
 
-            unsigned int d3 = result.vec_size() / (result.size(0) * result.size(1));
+            double *result_data = result.data();
+            double const *grad_data = grad.data();
 
-            la::cpu::weak_tensor<double> result3 { result.data(), { result.size(0), result.size(1), d3 } };
+            unsigned int s0 = result.size(0);
+            unsigned int s1 = result.size(1);
+            unsigned int s2 = result.size(2);
 
-            // int z = 0;
+            int result_vec_size = result.vec_size();
+            int grad_vec_size = grad.vec_size();
 
-            double *result3_data = result3.data();
-            double const *u_data = u.data();
+            unsigned int r0 = s0 - f1 + 1 + 2 * p1;
+            unsigned int r1 = s1 - f2 + 1 + 2 * p2;
 
-            unsigned int s0 = result3.size(0);
-            unsigned int s1 = result3.size(1);
-            unsigned int s2 = result3.size(2);
-
-            #pragma omp parallel for
-            for (int i = 0; i < s0; ++i) {
-                for (int j = 0; j < s1; ++j) {
-
+            for (int i = 0; i < r0; ++i) {
+                for (int j = 0; j < r1; ++j) {
                     for (int a = 0; a < f1; ++a) {
                         for (int b = 0; b < f2; ++b) {
-                            int c1 = i + a - (f1 / 2) * d1;
-                            int c2 = j + b - (f2 / 2) * d2;
 
-                            int z = i * s1 * f1 * f2 * s2 + j * f1 * f2 * s2 + a * f2 * s2 + b * s2;
+                            // int c1 = i + (a - (f1 / 2)) * d1;
+                            // int c2 = j + (b - (f2 / 2)) * d2;
 
-                            int base = c1 * s1 * s2 + c2 * s2;
+                            int c1 = i + (a - p1) * d1;
+                            int c2 = j + (b - p2) * d2;
 
                             if (c1 < 0 || c2 < 0 || c1 >= s0 || c2 >= s1) {
-                                // do nothing
-                                // z += s2;
-                            } else {
-                                for (int k = 0; k < s2; ++k) {
-                                    result3_data[base + k] += u_data[z + k];
-                                    // ++z;
-                                }
+                                continue;
+                            }
+
+                            int grad_base = i * r1 * f1 * f2 * s2 + j * f1 * f2 * s2 + a * f2 * s2 + b * s2;
+
+                            int result_base = c1 * s1 * s2 + c2 * s2;
+
+                            for (int k = 0; k < s2; ++k) {
+                                assert(result_base + k < result_vec_size);
+                                assert(grad_base + k < grad_vec_size);
+
+                                result_data[result_base + k] += grad_data[grad_base + k];
                             }
                         }
                     }
@@ -231,5 +234,128 @@ namespace autodiff {
                 }
             }
         }
+
+        void pool_max(la::cpu::tensor_like<double>& indices,
+            la::cpu::tensor_like<double>& output,
+            la::cpu::tensor_like<double> const& input,
+            int dim1, int dim2, int stride1, int stride2)
+        {
+            assert(input.dim() == 3);
+            assert(output.dim() == 3);
+
+            int d1 = input.size(0);
+            int d2 = input.size(1);
+            int channels = input.size(2);
+
+            int f1 = output.size(0);
+            int f2 = output.size(1);
+
+            assert(channels == output.size(2));
+
+            double const* input_data = input.data();
+            double* output_data = output.data();
+            double* indices_data = indices.data();
+
+            int input_vec_size = input.vec_size();
+            int output_vec_size = output.vec_size();
+            int indices_vec_size = indices.vec_size();
+
+            for (int i = 0; i < d1; i += stride1) {
+                for (int j = 0; j < d2; j += stride2) {
+                    for (int m = 0; m < dim1; ++m) {
+                        for (int n = 0; n < dim2; ++n) {
+
+                            int c1 = i + (m - dim1 / 2);
+                            int c2 = j + (n - dim2 / 2);
+
+                            if (c1 < 0 || c1 >= d1 || c2 < 0 || c2 >= d2) {
+                                continue;
+                            }
+
+                            int input_base = c1 * d2 * channels + c2 * channels;
+
+                            int u = i / stride1;
+                            int v = j / stride2;
+
+                            int output_base = u * f2 * channels + v * channels;
+
+                            for (int c = 0; c < channels; ++c) {
+
+                                assert(0 <= input_base + c && input_base + c < input_vec_size);
+                                assert(0 <= output_base + c && output_base + c < output_vec_size);
+                                assert(output_base + c < indices_vec_size);
+
+                                double v = input_data[input_base + c];
+                                double& max = output_data[output_base + c];
+
+                                if (v > max) {
+                                    max = v;
+                                    indices_data[output_base + c] = m * dim2 + n;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        void pool_max_grad(la::cpu::tensor_like<double>& result,
+            la::cpu::tensor_like<double> const& grad,
+            la::cpu::tensor_like<double> const& indices,
+            int dim1, int dim2, int stride1, int stride2)
+        {
+            assert(grad.dim() == 3);
+            assert(result.dim() == 3);
+
+            int f1 = grad.size(0);
+            int f2 = grad.size(1);
+            int channels = grad.size(2);
+
+            int d1 = result.size(0);
+            int d2 = result.size(1);
+
+            assert(result.size(2) == channels);
+
+            double* result_data = result.data();
+            double const* grad_data = grad.data();
+            double const* indices_data = indices.data();
+
+            int grad_vec_size = grad.vec_size();
+            int result_vec_size = result.vec_size();
+
+            for (int u = 0; u < f1; ++u) {
+                for (int v = 0; v < f2; ++v) {
+
+                    int grad_base = u * f2 * channels + v * channels;
+
+                    for (int c = 0; c < channels; ++c) {
+
+                        int m = int(indices_data[grad_base + c]) / dim2;
+                        int n = int(indices_data[grad_base + c]) % dim2;
+
+                        assert(0 <= m && m < dim1);
+                        assert(0 <= n && n < dim2);
+
+                        int i = u * stride1;
+                        int j = v * stride2;
+
+                        assert(0 <= i && i <= d1);
+                        assert(0 <= j && j <= d2);
+
+                        assert(0 <= (i + m - dim1 / 2) && (i + m - dim1 / 2) < d1);
+                        assert(0 <= (j + n - dim2 / 2) && (j + n - dim2 / 2) < d2);
+
+                        int result_base = (i + m - dim1 / 2) * d2 * channels + (j + n - dim2 / 2) * channels;
+
+                        assert(0 <= grad_base + c && grad_base + c < grad_vec_size);
+                        assert(0 <= result_base + c && result_base + c < result_vec_size);
+
+                        result_data[result_base + c] += grad_data[grad_base + c];
+                    }
+
+                }
+            }
+        }
+
     }
 }
