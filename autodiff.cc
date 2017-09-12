@@ -1222,15 +1222,18 @@ namespace autodiff {
             la::cpu::tensor<double> zeros;
             la::cpu::resize_as(zeros, storage_t);
             storage->grad = std::make_shared<la::cpu::tensor<double>>(zeros);
+            t->grad = storage->grad;
 
             unsigned long size = 0;
-            for (int i = 0; i < graph.adj[t->id].size(); ++i) {
+            for (int i = 0; i < graph.adj[t->id].size() - 1; ++i) {
                 auto ch = get_child(t, i);
                 auto& ch_t = get_output<la::cpu::tensor_like<double>>(ch);
                 la::cpu::weak_tensor<double> g { storage_t.data() + size, ch_t.sizes() };
                 ch->grad = std::make_shared<la::cpu::weak_tensor<double>>(g);
             }
         }
+
+        t->grad = storage->grad;
     }
 
     void weak_cat_grad(std::shared_ptr<op_t> t)
