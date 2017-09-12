@@ -1201,8 +1201,8 @@ namespace autodiff {
             result->grad_needed = result->grad_needed || t->grad_needed;
         }
 
+        g.add_edge(result, storage);
         result->output = storage->output;
-        result->grad = storage->grad;
 
         if (!g.lazy) {
             eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
@@ -1213,6 +1213,24 @@ namespace autodiff {
 
     void weak_cat_eval(std::shared_ptr<op_t> t)
     {
+        auto& graph = *t->graph;
+
+        auto storage = graph.vertices[graph.adj[t->id].back()];
+
+        if (t->grad_needed && storage->grad == nullptr) {
+            auto& storage_t = get_output<la::cpu::tensor_like<double>>(storage);
+            la::cpu::tensor<double> zeros;
+            la::cpu::resize_as(zeros, storage_t);
+            storage->grad = std::make_shared<la::cpu::tensor<double>>(zeros);
+
+            unsigned long size = 0;
+            for (int i = 0; i < graph.adj[t->id].size(); ++i) {
+                auto ch = get_child(t, i);
+                auto& ch_t = get_output<la::cpu::tensor_like<double>>(ch);
+                la::cpu::weak_tensor<double> g { storage_t.data() + size, ch_t.sizes() };
+                ch->grad = std::make_shared<la::cpu::weak_tensor<double>>(g);
+            }
+        }
     }
 
     void weak_cat_grad(std::shared_ptr<op_t> t)
