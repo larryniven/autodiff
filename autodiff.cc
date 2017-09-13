@@ -787,11 +787,15 @@ namespace autodiff {
         }
     }
 
-    std::shared_ptr<op_t> add(std::shared_ptr<op_t> t, std::vector<std::shared_ptr<op_t>> ts)
+    std::shared_ptr<op_t> add_to(std::shared_ptr<op_t> t, std::vector<std::shared_ptr<op_t>> ts)
     {
+        assert(ts.size() > 0);
+
         auto& g = *ts.front()->graph;
 
-        std::shared_ptr<op_t> result = g.make_node("add");
+        std::shared_ptr<op_t> result = g.make_node("add_to");
+
+        g.add_edge(result, t);
 
         bool grad_needed = false;
         for (auto& z: ts) {
@@ -799,13 +803,10 @@ namespace autodiff {
             grad_needed = (grad_needed || z->grad_needed);
         }
 
-        g.add_edge(result, t);
-
         result->grad_needed = grad_needed;
         t->grad_needed = (t->grad_needed || result->grad_needed);
 
         result->output = t->output;
-        result->grad = t->grad;
 
         if (!g.lazy) {
             eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
@@ -814,6 +815,68 @@ namespace autodiff {
         return result;
     }
 
+    void add_to_eval(std::shared_ptr<op_t> t)
+    {
+        auto& g = *t->graph;
+
+        assert(g.adj[t->id].size() > 0);
+
+        for (int i = 2; i < g.adj[t->id].size(); ++i) {
+            if (get_output<la::cpu::tensor_like<double>>(get_child(t, i-1)).vec_size()
+                    != get_output<la::cpu::tensor_like<double>>(get_child(t, i)).vec_size())
+            {
+                std::ostringstream oss;
+                oss << get_output<la::cpu::tensor_like<double>>(get_child(t, i-1)).vec_size()
+                    << " != " << get_output<la::cpu::tensor_like<double>>(get_child(t, i)).vec_size();
+                throw std::logic_error(oss.str());
+            }
+        }
+
+        auto storage = get_child(t, 0);
+        assert(storage->output != nullptr);
+
+        auto& result = get_output<la::cpu::tensor_like<double>>(t);
+
+        for (int i = 1; i < g.adj[t->id].size(); ++i) {
+            auto& u = get_output<la::cpu::tensor_like<double>>(get_child(t, i));
+
+            la::cpu::iadd(result, u);
+        }
+
+        if (t->grad_needed && storage->grad == nullptr) {
+            la::cpu::tensor<double> z;
+            la::cpu::tensor_like<double>& m = get_output<la::cpu::tensor_like<double>>(get_child(t, 1));
+            la::cpu::resize_as(z, m);
+            storage->grad = std::make_shared<la::cpu::tensor<double>>(std::move(z));
+        }
+
+        t->grad = storage->grad;
+    }
+
+    void add_to_grad(std::shared_ptr<op_t> t)
+    {
+        auto& g = *t->graph;
+
+        auto& grad = get_grad<la::cpu::tensor_like<double>>(t);
+
+        for (int i = 1; i < g.adj[t->id].size(); ++i) {
+            auto c = get_child(t, i);
+
+            if (c->grad_needed && c->grad == nullptr) {
+                auto& c_t = get_output<la::cpu::tensor_like<double>>(c);
+                la::cpu::tensor<double> g;
+                la::cpu::resize_as(g, c_t);
+                c->grad = std::make_shared<la::cpu::tensor<double>>(std::move(g));
+            }
+
+            auto& u = get_grad<la::cpu::tensor_like<double>>(c);
+
+            if (c->grad_needed) {
+                la::cpu::iadd(u, grad);
+            }
+        }
+    }
+    
     std::shared_ptr<op_t> add(std::vector<std::shared_ptr<op_t>> ts)
     {
         auto& g = *ts.front()->graph;
@@ -1438,41 +1501,30 @@ namespace autodiff {
 
     void row_at_eval(std::shared_ptr<op_t> t)
     {
+        auto ch = get_child(t, 0);
+
         int i = *std::static_pointer_cast<unsigned int>(t->data);
-        la::cpu::weak_matrix<double> m = get_output<la::cpu::tensor_like<double>>(get_child(t, 0)).as_matrix();
+        la::cpu::weak_matrix<double> m = get_output<la::cpu::tensor_like<double>>(ch).as_matrix();
         assert(i < m.rows());
         la::cpu::weak_tensor<double> v { m.data() + i * m.cols(), { m.cols() } };
         t->output = std::make_shared<la::cpu::weak_tensor<double>>(v);
+
+        if (t->grad_needed && ch->grad == nullptr) {
+            auto& ch_t = get_output<la::cpu::tensor_like<double>>(ch);
+            la::cpu::tensor<double> g;
+            la::cpu::resize_as(g, ch_t);
+            ch->grad = std::make_shared<la::cpu::tensor<double>>(g);
+        }
+
+        if (t->grad_needed && t->grad == nullptr) {
+            auto& grad_m = get_grad<la::cpu::tensor_like<double>>(ch).as_matrix();
+            la::cpu::weak_tensor<double> g { grad_m.data() + i * grad_m.cols(), { grad_m.cols() } };
+            t->grad = std::make_shared<la::cpu::weak_tensor<double>>(g);
+        }
     }
 
     void row_at_grad(std::shared_ptr<op_t> t)
     {
-        int i = *std::static_pointer_cast<unsigned int>(t->data);
-
-        auto c = get_child(t, 0);
-        auto& m = get_output<la::cpu::tensor_like<double>>(c);
-
-        if (c->grad_needed && c->grad == nullptr) {
-            la::cpu::tensor<double> g;
-            la::cpu::resize_as(g, m);
-            c->grad = std::make_shared<la::cpu::tensor<double>>(std::move(g));
-        }
-
-        auto& v = get_grad<la::cpu::tensor_like<double>>(t);
-        auto& g = get_grad<la::cpu::tensor_like<double>>(c);
-
-        if (c->grad_needed) {
-            la::cpu::weak_matrix<double> mat = m.as_matrix();
-
-            double *g_data = g.data();
-            double const *v_data = v.data();
-
-            unsigned int cols = mat.cols();
-
-            for (int d = 0; d < v.vec_size(); ++d) {
-                g_data[i * cols + d] += v_data[d];
-            }
-        }
     }
 
     std::shared_ptr<op_t> reshape(std::shared_ptr<op_t> const& t, std::vector<unsigned int> sizes)
