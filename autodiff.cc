@@ -1799,8 +1799,9 @@ namespace autodiff {
         if (t->output == nullptr) {
             la::cpu::tensor<double> w;
             w.resize(std::vector<unsigned int> {
-                u.size(0) - v.size(0) + 1 + 2 * p1,
-                u.size(1) - v.size(1) + 1 + 2 * p2, v_mat.rows() });
+                u.size(0),
+                u.size(1) - v.size(0) + 1 + 2 * p1,
+                u.size(2) - v.size(1) + 1 + 2 * p2, v_mat.rows() });
             t->output = std::make_shared<la::cpu::tensor<double>>(std::move(w));
         }
 
