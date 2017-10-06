@@ -2046,7 +2046,7 @@ namespace autodiff {
         for (int i = 0; i < k; ++i) {
             std::pop_heap(heap.begin(), heap.end(), less);
             auto& p = heap.back();
-            z({p.second}) = p.first;
+            z.data()[p.second] = p.first;
             indices.push_back(p.second);
             heap.pop_back();
         }
