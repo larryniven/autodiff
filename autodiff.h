@@ -186,6 +186,12 @@ namespace autodiff {
 
     std::shared_ptr<op_t> corr(std::shared_ptr<op_t> const& t1, std::shared_ptr<op_t> t2);
 
+    std::shared_ptr<op_t> corr_delinearize(std::shared_ptr<op_t> const& t1, std::shared_ptr<op_t> t2,
+        int p1, int p2, int d1, int d2);
+    std::shared_ptr<op_t> corr_delinearize(std::shared_ptr<op_t> const& t1, std::shared_ptr<op_t> t2);
+    void corr_delinearize_eval(std::shared_ptr<op_t> t);
+    void corr_delinearize_grad(std::shared_ptr<op_t> t);
+
     std::shared_ptr<op_t> pool_max(std::shared_ptr<op_t> t, int d1, int d2, int s1, int s2);
     void pool_max_eval(std::shared_ptr<op_t> t);
     void pool_max_grad(std::shared_ptr<op_t> t);
@@ -274,6 +280,7 @@ namespace autodiff {
         { "rep_row_to", rep_row_to_eval },
         { "rep_col_to", rep_col_to_eval },
         { "corr_linearize", corr_linearize_eval },
+        { "corr_delinearize", corr_delinearize_eval },
         { "pool_max", pool_max_eval },
         { "seg-max", seg_max_eval },
         { "high-pass-k", high_pass_k_eval },
@@ -308,6 +315,7 @@ namespace autodiff {
         { "rep_row_to", rep_row_to_grad },
         { "rep_col_to", rep_col_to_grad },
         { "corr_linearize", corr_linearize_grad },
+        { "corr_delinearize", corr_delinearize_grad },
         { "pool_max", pool_max_grad },
         { "seg-max", seg_max_grad },
         { "high-pass-k", high_pass_k_grad },

@@ -184,61 +184,6 @@ namespace autodiff {
             }
         }
 
-        void corr_linearize_grad(la::cpu::tensor_like<double>& result,
-            la::cpu::tensor_like<double> const& grad,
-            int f1, int f2, int p1, int p2, int d1, int d2)
-        {
-            assert(result.dim() == 4);
-
-            double *result_data = result.data();
-            double const *grad_data = grad.data();
-
-            unsigned int s0 = result.size(0);
-            unsigned int s1 = result.size(1);
-            unsigned int s2 = result.size(2);
-            unsigned int s3 = result.size(3);
-
-            int result_vec_size = result.vec_size();
-            int grad_vec_size = grad.vec_size();
-
-            unsigned int r0 = s1 - f1 + 1 + 2 * p1;
-            unsigned int r1 = s2 - f2 + 1 + 2 * p2;
-
-            for (int n = 0; n < s0; ++n) {
-                for (int i = 0; i < r0; ++i) {
-                    for (int j = 0; j < r1; ++j) {
-                        for (int a = 0; a < f1; ++a) {
-                            for (int b = 0; b < f2; ++b) {
-
-                                // int c1 = i + (a - (f1 / 2)) * d1;
-                                // int c2 = j + (b - (f2 / 2)) * d2;
-
-                                int c1 = i + (a - p1) * d1;
-                                int c2 = j + (b - p2) * d2;
-
-                                if (c1 < 0 || c2 < 0 || c1 >= s0 || c2 >= s1) {
-                                    continue;
-                                }
-
-                                int grad_base = n * r0 * r1 * f1 * f2 * s3 + i * r1 * f1 * f2 * s3
-                                    + j * f1 * f2 * s3 + a * f2 * s3 + b * s3;
-
-                                int result_base = n * s1 * s2 * s3 + c1 * s2 * s3 + c2 * s3;
-
-                                for (int k = 0; k < s3; ++k) {
-                                    assert(result_base + k < result_vec_size);
-                                    assert(grad_base + k < grad_vec_size);
-
-                                    result_data[result_base + k] += grad_data[grad_base + k];
-                                }
-                            }
-                        }
-
-                    }
-                }
-            }
-        }
-
         void pool_max(la::cpu::tensor_like<double>& indices,
             la::cpu::tensor_like<double>& output,
             la::cpu::tensor_like<double> const& input,

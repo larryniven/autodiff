@@ -422,11 +422,10 @@ namespace autodiff {
         if (t->output == nullptr) {
             la::cpu::tensor<double> c;
             std::vector<unsigned int> a_sizes = a.sizes();
-            std::vector<unsigned int> b_sizes = b.sizes();
 
             std::vector<unsigned int> sizes;
             sizes.insert(sizes.end(), a_sizes.begin(), a_sizes.end() - 1);
-            sizes.insert(sizes.end(), b_sizes.begin(), b_sizes.end() - 1);
+            sizes.push_back(b.vec_size() / b.size(b.dim() - 1));
 
             c.resize(sizes);
 
@@ -1788,10 +1787,7 @@ namespace autodiff {
         auto& u = get_output<la::cpu::tensor_like<double>>(get_child(t, 0));
         auto& v = get_output<la::cpu::tensor_like<double>>(get_child(t, 1));
 
-        int p1;
-        int p2;
-        int d1;
-        int d2;
+        int p1, p2, d1, d2;
         std::tie(p1, p2, d1, d2) = *std::static_pointer_cast<std::tuple<int, int, int, int>>(t->data);
 
         la::cpu::weak_matrix<double> v_mat = v.as_matrix();
@@ -1814,10 +1810,7 @@ namespace autodiff {
         auto& u = get_output<la::cpu::tensor_like<double>>(get_child(t, 0));
         auto& v = get_output<la::cpu::tensor_like<double>>(get_child(t, 1));
 
-        int p1;
-        int p2;
-        int d1;
-        int d2;
+        int p1, p2, d1, d2;
         std::tie(p1, p2, d1, d2) = *std::static_pointer_cast<std::tuple<int, int, int, int>>(t->data);
 
         auto u_op = get_child(t, 0);
@@ -1832,7 +1825,7 @@ namespace autodiff {
         auto& g_u = get_grad<la::cpu::tensor_like<double>>(u_op);
 
         if (u_op->grad_needed) {
-            op::corr_linearize_grad(g_u, g_w, v.size(0), v.size(1), p1, p2, d1, d2);
+            la::cpu::corr_delinearize(g_u, g_w, v.size(0), v.size(1), p1, p2, d1, d2);
         }
     }
 
@@ -1840,6 +1833,80 @@ namespace autodiff {
     {
         auto t = corr_linearize(t1, t2);
         return mul(t, t2);
+    }
+
+    std::shared_ptr<op_t> corr_delinearize(std::shared_ptr<op_t> const& t1, std::shared_ptr<op_t> t2,
+        int p1, int p2, int d1, int d2)
+    {
+        auto& g = *t1->graph;
+
+        std::shared_ptr<op_t> result = g.make_node("corr_delinearize");
+
+        g.add_edge(result, t1);
+        g.add_edge(result, t2);
+
+        result->grad_needed = t1->grad_needed;
+
+        result->data = std::make_shared<std::tuple<int, int, int, int>>(
+            std::make_tuple(p1, p2, d1, d2));
+
+        if (!g.lazy) {
+            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+        }
+
+        return result;
+    }
+
+    std::shared_ptr<op_t> corr_delinearize(std::shared_ptr<op_t> const& t1, std::shared_ptr<op_t> t2)
+    {
+        return corr_delinearize(t1, t2, 0, 0, 1, 1);
+    }
+
+    void corr_delinearize_eval(std::shared_ptr<op_t> t)
+    {
+        auto& u = get_output<la::cpu::tensor_like<double>>(get_child(t, 0));
+        auto& v = get_output<la::cpu::tensor_like<double>>(get_child(t, 1));
+
+        int p1, p2, d1, d2;
+        std::tie(p1, p2, d1, d2) = *std::static_pointer_cast<std::tuple<int, int, int, int>>(t->data);
+
+        la::cpu::weak_matrix<double> v_mat = v.as_matrix();
+
+        if (t->output == nullptr) {
+            la::cpu::tensor<double> w;
+            w.resize(std::vector<unsigned int> {
+                u.size(0),
+                u.size(1) + v.size(0) - 1 - 2 * p1,
+                u.size(2) + v.size(1) - 1 - 2 * p2, v_mat.rows() / (v.size(0) * v.size(1)) });
+            t->output = std::make_shared<la::cpu::tensor<double>>(std::move(w));
+        }
+
+        la::cpu::tensor_like<double>& w = get_output<la::cpu::tensor_like<double>>(t);
+        la::cpu::corr_delinearize(w, u, v.size(0), v.size(1), p1, p2, d1, d2);
+    }
+
+    void corr_delinearize_grad(std::shared_ptr<op_t> t)
+    {
+        auto& u = get_output<la::cpu::tensor_like<double>>(get_child(t, 0));
+        auto& v = get_output<la::cpu::tensor_like<double>>(get_child(t, 1));
+
+        int p1, p2, d1, d2;
+        std::tie(p1, p2, d1, d2) = *std::static_pointer_cast<std::tuple<int, int, int, int>>(t->data);
+
+        auto u_op = get_child(t, 0);
+
+        if (u_op->grad_needed && u_op->grad == nullptr) {
+            la::cpu::tensor<double> g;
+            la::cpu::resize_as(g, u);
+            u_op->grad = std::make_shared<la::cpu::tensor<double>>(std::move(g));
+        }
+
+        auto& g_w = get_grad<la::cpu::tensor_like<double>>(t);
+        auto& g_u = get_grad<la::cpu::tensor_like<double>>(u_op);
+
+        if (u_op->grad_needed) {
+            la::cpu::corr_linearize(g_u, g_w, v.size(0), v.size(1), p1, p2, d1, d2);
+        }
     }
 
     std::shared_ptr<op_t> pool_max(std::shared_ptr<op_t> t, int d1, int d2, int s1, int s2)
