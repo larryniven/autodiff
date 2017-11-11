@@ -100,17 +100,23 @@ namespace autodiff {
         {
             assert(u.vec_size() == v.vec_size());
 
-            double logZ = -std::numeric_limits<double>::infinity();
+            la::cpu::matrix_like<double> const& m = v.as_matrix();
 
-            double *u_data = u.data();
-            double const *v_data = v.data();
+            la::cpu::vector<double> logZs;
+            logZs.resize(m.rows(), -std::numeric_limits<double>::infinity());
 
-            for (int j = 0; j < v.vec_size(); ++j) {
-                logZ = ebt::log_add(logZ, v_data[j]);
+            for (int i = 0; i < m.rows(); ++i) {
+                for (int j = 0; j < m.cols(); ++j) {
+                    logZs(i) = ebt::log_add(logZs(i), m(i, j));
+                }
             }
 
-            for (int i = 0; i < v.vec_size(); ++i) {
-                u_data[i] = std::exp(v_data[i] - logZ);
+            la::cpu::weak_matrix<double> result {u.data(), m.rows(), m.cols()};
+
+            for (int i = 0; i < result.rows(); ++i) {
+                for (int j = 0; j < result.cols(); ++j) {
+                    result(i, j) = std::exp(m(i, j) - logZs(i));
+                }
             }
         }
 
@@ -120,14 +126,95 @@ namespace autodiff {
         {
             assert(result.vec_size() == grad.vec_size() && grad.vec_size() == output.vec_size());
 
-            double mu = la::cpu::dot(grad, output);
+            la::cpu::tensor<double> mu = la::cpu::vdot(grad, output);
+
+            la::cpu::matrix_like<double> const& output_m = output.as_matrix();
+
+            double *result_data = result.data();
+            double const *output_data = output.data();
+            double const *grad_data = grad.data();
+            double const *mu_data = mu.data();
+
+            for (int i = 0; i < output_m.rows(); ++i) {
+                int c = i * output_m.cols();
+
+                for (int j = 0; j < output_m.cols(); ++j) {
+                    result_data[c + j] += output_data[c + j] * (grad_data[c + j] - mu_data[i]);
+                }
+            }
+        }
+
+        void spatial_softmax(la::cpu::tensor_like<double>& u, la::cpu::tensor_like<double> const& v)
+        {
+            assert(u.vec_size() == v.vec_size());
+            assert(u.dim() == v.dim() && u.dim() == 4);
+
+            double *u_data = u.data();
+            double const *v_data = v.data();
+
+            int batch_size = v.size(0);
+            int time = v.size(1);
+            int freq = v.size(2);
+            int nchannel = v.size(3);
+
+            la::cpu::matrix<double> logZ;
+            logZ.resize(batch_size, nchannel, -std::numeric_limits<double>::infinity());
+
+            for (int b = 0; b < batch_size; ++b) {
+                for (int i = 0; i < time * freq; ++i) {
+                    for (int j = 0; j < nchannel; ++j) {
+                        logZ(b, j) = ebt::log_add(logZ(b, j),
+                            v_data[b * time * freq * nchannel + i * nchannel + j]);
+                    }
+                }
+            }
+
+            for (int b = 0; b < batch_size; ++b) {
+                for (int i = 0; i < time * freq; ++i) {
+                    for (int j = 0; j < nchannel; ++j) {
+                        u_data[b * time * freq * nchannel + i * nchannel + j] =
+                            std::exp(v_data[b * time * freq * nchannel + i * nchannel + j] - logZ(b, j));
+                    }
+                }
+            }
+        }
+
+        void ispatial_softmax_grad(la::cpu::tensor_like<double>& result,
+            la::cpu::tensor_like<double> const& grad,
+            la::cpu::tensor_like<double> const& output)
+        {
+            assert(result.vec_size() == grad.vec_size() && grad.vec_size() == output.vec_size());
+            assert(result.dim() == output.dim() && output.dim() == grad.dim() && output.dim() == 4);
+
+            int batch_size = output.size(0);
+            int time = output.size(1);
+            int freq = output.size(2);
+            int nchannel = output.size(3);
+
+            la::cpu::matrix<double> mu;
+            mu.resize(batch_size, nchannel);
 
             double *result_data = result.data();
             double const *output_data = output.data();
             double const *grad_data = grad.data();
 
-            for (int i = 0; i < grad.vec_size(); ++i) {
-                result_data[i] += output_data[i] * (grad_data[i] - mu);
+            for (int b = 0; b < batch_size; ++b) {
+                for (int i = 0; i < time * freq; ++i) {
+                    for (int j = 0; j < nchannel; ++j) {
+                        mu(b, j) +=
+                            grad_data[b * time * freq * nchannel + i * nchannel + j];
+                    }
+                }
+            }
+
+            for (int b = 0; b < batch_size; ++b) {
+                for (int i = 0; i < time * freq; ++i) {
+                    for (int j = 0; j < nchannel; ++j) {
+                        result_data[b * time * freq * nchannel + i * nchannel + j] +=
+                            output_data[b * time * freq * nchannel + i * nchannel + j]
+                            * (grad_data[b * time * freq * nchannel + i * nchannel + j] - mu(b, j));
+                    }
+                }
             }
         }
 

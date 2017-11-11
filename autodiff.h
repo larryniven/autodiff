@@ -83,6 +83,10 @@ namespace autodiff {
     void subtensor_eval(std::shared_ptr<op_t> t);
     void subtensor_grad(std::shared_ptr<op_t> t);
 
+    std::shared_ptr<op_t> sum(std::shared_ptr<op_t> t);
+    void sum_eval(std::shared_ptr<op_t> t);
+    void sum_grad(std::shared_ptr<op_t> t);
+
     std::shared_ptr<op_t> mul(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2);
     void mul_eval(std::shared_ptr<op_t> t);
     void mul_grad(std::shared_ptr<op_t> t);
@@ -95,7 +99,8 @@ namespace autodiff {
     void rtmul_eval(std::shared_ptr<op_t> t);
     void rtmul_grad(std::shared_ptr<op_t> t);
 
-    std::shared_ptr<op_t> emul(std::shared_ptr<op_t> s, std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2);
+    std::shared_ptr<op_t> emul(std::shared_ptr<op_t> s,
+        std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2);
     std::shared_ptr<op_t> emul(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2);
     void emul_eval(std::shared_ptr<op_t> t);
     void emul_grad(std::shared_ptr<op_t> t);
@@ -115,6 +120,10 @@ namespace autodiff {
     std::shared_ptr<op_t> exp(std::shared_ptr<op_t> input);
     void exp_eval(std::shared_ptr<op_t> t);
     void exp_grad(std::shared_ptr<op_t> t);
+
+    std::shared_ptr<op_t> log(std::shared_ptr<op_t> input);
+    void log_eval(std::shared_ptr<op_t> t);
+    void log_grad(std::shared_ptr<op_t> t);
 
     std::shared_ptr<op_t> add_to(std::shared_ptr<op_t> t, std::vector<std::shared_ptr<op_t>> ts);
     void add_to_eval(std::shared_ptr<op_t> t);
@@ -136,6 +145,10 @@ namespace autodiff {
     std::shared_ptr<op_t> softmax(std::shared_ptr<op_t> t);
     void softmax_eval(std::shared_ptr<op_t> t);
     void softmax_grad(std::shared_ptr<op_t> t);
+
+    std::shared_ptr<op_t> spatial_softmax(std::shared_ptr<op_t> t);
+    void spatial_softmax_eval(std::shared_ptr<op_t> t);
+    void spatial_softmax_grad(std::shared_ptr<op_t> t);
 
     std::shared_ptr<op_t> logsoftmax(std::shared_ptr<op_t> t);
     void logsoftmax_eval(std::shared_ptr<op_t> t);
@@ -256,6 +269,7 @@ namespace autodiff {
         { "var", var_eval },
         { "weak_var", weak_var_eval },
         { "subtensor", subtensor_eval },
+        { "sum", sum_eval },
         { "mul", mul_eval },
         { "ltmul", ltmul_eval },
         { "rtmul", rtmul_eval },
@@ -264,11 +278,13 @@ namespace autodiff {
         { "relu", relu_eval },
         { "tanh", tanh_eval },
         { "exp", exp_eval },
+        { "log", log_eval },
         { "add", add_eval },
         { "add_to", add_to_eval },
         { "sub", sub_eval },
         { "norm", norm_eval },
         { "softmax", softmax_eval },
+        { "spatial_softmax", spatial_softmax_eval },
         { "logsoftmax", logsoftmax_eval },
         { "dot", dot_eval },
         { "weak_cat", weak_cat_eval },
@@ -291,6 +307,7 @@ namespace autodiff {
         { "var", var_grad },
         { "weak_var", weak_var_grad },
         { "subtensor", subtensor_grad },
+        { "sum", sum_grad },
         { "mul", mul_grad },
         { "ltmul", ltmul_grad },
         { "rtmul", rtmul_grad },
@@ -299,11 +316,13 @@ namespace autodiff {
         { "relu", relu_grad },
         { "tanh", tanh_grad },
         { "exp", exp_grad },
+        { "log", log_grad },
         { "add", add_grad },
         { "add_to", add_to_grad },
         { "sub", sub_grad },
         { "norm", norm_grad },
         { "softmax", softmax_grad },
+        { "spatial_softmax", spatial_softmax_grad },
         { "logsoftmax", logsoftmax_grad },
         { "dot", dot_grad },
         { "weak_cat", weak_cat_eval },

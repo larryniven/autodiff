@@ -246,6 +246,58 @@ namespace autodiff {
         }
     }
 
+    std::shared_ptr<op_t> sum(std::shared_ptr<op_t> t)
+    {
+        auto& g = *t->graph;
+
+        std::shared_ptr<op_t> result = g.make_node("sum");
+
+        g.add_edge(result, t);
+
+        result->grad_needed = t->grad_needed;
+
+        if (!g.lazy) {
+            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+        }
+
+        return result;
+    }
+    
+    void sum_eval(std::shared_ptr<op_t> t)
+    {
+        auto& a = get_output<la::cpu::tensor_like<double>>(get_child(t, 0));
+
+        double result = 0;
+        for (int i = 0; i < a.vec_size(); ++i) {
+            result += a.data()[i];
+        }
+
+        t->output = std::make_shared<double>(result);
+    }
+
+    void sum_grad(std::shared_ptr<op_t> t)
+    {
+        auto& grad = get_grad<double>(t);
+
+        auto a_o = get_child(t, 0);
+
+        auto& a = get_output<la::cpu::tensor_like<double>>(a_o);
+
+        if (a_o->grad_needed && a_o->grad == nullptr) {
+            la::cpu::tensor<double> g;
+            la::cpu::resize_as(g, a);
+            a_o->grad = std::make_shared<la::cpu::tensor<double>>(std::move(g));
+        }
+
+        auto& a_grad = get_grad<la::cpu::tensor_like<double>>(a_o);
+
+        if (a_o->grad_needed) {
+            for (int i = 0; i < a_grad.vec_size(); ++i) {
+                a_grad.data()[i] += grad;
+            }
+        }
+    }
+
     std::shared_ptr<op_t> mul(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2)
     {
         assert(t1->graph == t2->graph);
@@ -786,6 +838,75 @@ namespace autodiff {
         }
     }
 
+    std::shared_ptr<op_t> log(std::shared_ptr<op_t> input)
+    {
+        auto& g = *input->graph;
+
+        std::shared_ptr<op_t> result = g.make_node("log");
+        g.add_edge(result, input);
+    
+        result->grad_needed = input->grad_needed;
+
+        if (!g.lazy) {
+            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+        }
+
+        return result;
+    }
+
+    void log_eval(std::shared_ptr<op_t> t)
+    {
+        auto& input = get_output<la::cpu::tensor_like<double>>(get_child(t, 0));
+
+        if (t->output == nullptr) {
+            la::cpu::tensor<double> z;
+            la::cpu::resize_as(z, input);
+            t->output = std::make_shared<la::cpu::tensor<double>>(std::move(z));
+        }
+
+        auto& output = get_output<la::cpu::tensor_like<double>>(t);
+
+        double *output_data = output.data();
+        double const *input_data = input.data();
+
+        for (int i = 0; i < output.vec_size(); ++i) {
+            assert(input_data[i] > 0);
+
+            output_data[i] = std::log(input_data[i]);
+        }
+    }
+
+    void log_grad(std::shared_ptr<op_t> t)
+    {
+        auto& grad = get_grad<la::cpu::tensor_like<double>>(t);
+        auto& output = get_output<la::cpu::tensor_like<double>>(t);
+
+        assert(grad.vec_size() == output.vec_size());
+
+        auto ch = get_child(t, 0);
+        auto& ch_t = get_output<la::cpu::tensor_like<double>>(ch);
+
+        if (ch->grad_needed && ch->grad == nullptr) {
+            la::cpu::tensor<double> g;
+            la::cpu::resize_as(g, ch_t);
+            ch->grad = std::make_shared<la::cpu::tensor<double>>(std::move(g));
+        }
+
+        auto& result = get_grad<la::cpu::tensor_like<double>>(ch);
+
+        if (ch->grad_needed) {
+            double *result_data = result.data();
+            double const *output_data = output.data();
+            double const *grad_data = grad.data();
+
+            for (int i = 0; i < result.vec_size(); ++i) {
+                assert(output_data[i] > 0);
+
+                result_data[i] += 1.0 / output_data[i] * grad_data[i];
+            }
+        }
+    }
+
     std::shared_ptr<op_t> add_to(std::shared_ptr<op_t> t, std::vector<std::shared_ptr<op_t>> ts)
     {
         assert(ts.size() > 0);
@@ -1131,6 +1252,57 @@ namespace autodiff {
 
         if (ch->grad_needed) {
             op::isoftmax_grad(result, grad, output);
+        }
+    }
+    
+    std::shared_ptr<op_t> spatial_softmax(std::shared_ptr<op_t> t)
+    {
+        auto& g = *t->graph;
+
+        std::shared_ptr<op_t> result = g.make_node("spatial_softmax");
+        g.add_edge(result, t);
+    
+        result->grad_needed = t->grad_needed;
+
+        if (!g.lazy) {
+            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+        }
+
+        return result;
+    }
+
+    void spatial_softmax_eval(std::shared_ptr<op_t> t)
+    {
+        auto& v = get_output<la::cpu::tensor_like<double>>(get_child(t, 0));
+
+        if (t->output == nullptr) {
+            la::cpu::tensor<double> z;
+            la::cpu::resize_as(z, v);
+            t->output = std::make_shared<la::cpu::tensor<double>>(std::move(z));
+        }
+
+        auto& z = get_output<la::cpu::tensor_like<double>>(t);
+        op::spatial_softmax(z, v);
+    }
+
+    void spatial_softmax_grad(std::shared_ptr<op_t> t)
+    {
+        auto& output = get_output<la::cpu::tensor_like<double>>(t);
+        auto& grad = get_grad<la::cpu::tensor_like<double>>(t);
+
+        auto ch = get_child(t, 0);
+        auto& ch_t = get_output<la::cpu::tensor_like<double>>(ch);
+
+        if (ch->grad_needed && ch->grad == nullptr) {
+            la::cpu::tensor<double> g;
+            la::cpu::resize_as(g, ch_t);
+            ch->grad = std::make_shared<la::cpu::tensor<double>>(std::move(g));
+        }
+
+        auto& result = get_grad<la::cpu::tensor_like<double>>(ch);
+
+        if (ch->grad_needed) {
+            op::ispatial_softmax_grad(result, grad, output);
         }
     }
     

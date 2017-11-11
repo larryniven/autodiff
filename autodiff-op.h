@@ -31,6 +31,12 @@ namespace autodiff {
             la::cpu::tensor_like<double> const& grad,
             la::cpu::tensor_like<double> const& output);
 
+        void spatial_softmax(la::cpu::tensor_like<double>& u, la::cpu::tensor_like<double> const& v);
+
+        void ispatial_softmax_grad(la::cpu::tensor_like<double>& result,
+            la::cpu::tensor_like<double> const& grad,
+            la::cpu::tensor_like<double> const& output);
+
         void logsoftmax(la::cpu::tensor_like<double>& u, la::cpu::tensor_like<double> const& v);
 
         void ilogsoftmax_grad(la::cpu::tensor_like<double>& result,
