@@ -620,6 +620,78 @@ namespace autodiff {
         }
     }
 
+    std::shared_ptr<op_t> ediv(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2)
+    {
+        assert(t1->graph == t2->graph);
+        assert(t1->graph != nullptr);
+
+        auto& g = *t1->graph;
+
+        std::shared_ptr<op_t> result = g.make_node("ediv");
+
+        g.add_edge(result, t1);
+        g.add_edge(result, t2);
+    
+        result->grad_needed = (t1->grad_needed || t2->grad_needed);
+
+        if (!g.lazy) {
+            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+        }
+
+        return result;
+    }
+    
+    void ediv_eval(std::shared_ptr<op_t> t)
+    {
+        auto& u = get_output<la::cpu::tensor_like<double>>(get_child(t, 0));
+        auto& v = get_output<la::cpu::tensor_like<double>>(get_child(t, 1));
+
+        if (t->output == nullptr) {
+            la::cpu::tensor<double> z;
+            la::cpu::resize_as(z, u);
+            t->output = std::make_shared<la::cpu::tensor<double>>(std::move(z));
+        }
+
+        auto& z = get_output<la::cpu::tensor_like<double>>(t);
+        la::cpu::ediv(z, u, v);
+    }
+
+    void ediv_grad(std::shared_ptr<op_t> t)
+    {
+        auto& grad = get_grad<la::cpu::tensor_like<double>>(t);
+
+        auto u_o = get_child(t, 0);
+        auto v_o = get_child(t, 1);
+
+        auto& u = get_output<la::cpu::tensor_like<double>>(u_o);
+        auto& v = get_output<la::cpu::tensor_like<double>>(v_o);
+
+        if (u_o->grad_needed && u_o->grad == nullptr) {
+            la::cpu::tensor<double> g;
+            la::cpu::resize_as(g, u);
+            u_o->grad = std::make_shared<la::cpu::tensor<double>>(std::move(g));
+        }
+
+        if (v_o->grad_needed && v_o->grad == nullptr) {
+            la::cpu::tensor<double> g;
+            la::cpu::resize_as(g, v);
+            v_o->grad = std::make_shared<la::cpu::tensor<double>>(std::move(g));
+        }
+
+        auto& u_grad = get_grad<la::cpu::tensor_like<double>>(u_o);
+        auto& v_grad = get_grad<la::cpu::tensor_like<double>>(v_o);
+
+        if (u_o->grad_needed) {
+            la::cpu::ediv(u_grad, grad, v);
+        }
+
+        if (v_o->grad_needed) {
+            for (int i = 0; i < u.vec_size(); ++i) {
+                v_grad.data()[i] += grad.data()[i] * (- u.data()[i] / (v.data()[i] * v.data()[i]));
+            }
+        }
+    }
+
     std::shared_ptr<op_t> logistic(std::shared_ptr<op_t> input)
     {
         auto& g = *input->graph;
