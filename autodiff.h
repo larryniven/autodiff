@@ -226,6 +226,11 @@ namespace autodiff {
     void uniform_eval(std::shared_ptr<op_t> t);
     void uniform_grad(std::shared_ptr<op_t> t);
 
+    std::shared_ptr<op_t> normal(std::shared_ptr<op_t> t,
+        std::default_random_engine& gen);
+    void normal_eval(std::shared_ptr<op_t> t);
+    void normal_grad(std::shared_ptr<op_t> t);
+
     std::shared_ptr<op_t> dropout_mask(std::shared_ptr<op_t> t, double prob,
         std::default_random_engine& gen);
     void dropout_mask_eval(std::shared_ptr<op_t> t);
@@ -311,6 +316,7 @@ namespace autodiff {
         { "seg-max", seg_max_eval },
         { "high-pass-k", high_pass_k_eval },
         { "uniform", uniform_eval },
+        { "normal", normal_eval },
         { "dropout_mask", dropout_mask_eval },
     };
 
@@ -351,6 +357,7 @@ namespace autodiff {
         { "seg-max", seg_max_grad },
         { "high-pass-k", high_pass_k_grad },
         { "uniform", uniform_grad },
+        { "normal", normal_grad },
         { "dropout_mask", dropout_mask_grad },
     };
 

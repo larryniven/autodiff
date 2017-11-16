@@ -2434,6 +2434,52 @@ namespace autodiff {
     {
     }
 
+    std::shared_ptr<op_t> normal(std::shared_ptr<op_t> t, std::default_random_engine& gen)
+    {
+        auto& g = *t->graph;
+
+        std::shared_ptr<op_t> result = g.make_node("normal");
+
+        result->data = std::make_shared<std::default_random_engine*>(&gen);
+
+        g.add_edge(result, t);
+
+        result->grad_needed = false;
+
+        if (!g.lazy) {
+            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+        }
+
+        return result;
+    }
+
+    void normal_eval(std::shared_ptr<op_t> t)
+    {
+        auto& u = get_output<la::cpu::tensor_like<double>>(get_child(t, 0));
+
+        if (t->output == nullptr) {
+            la::cpu::tensor<double> w;
+            la::cpu::resize_as(w, u);
+            t->output = std::make_shared<la::cpu::tensor<double>>(std::move(w));
+        }
+
+        std::default_random_engine *gen = *std::static_pointer_cast<std::default_random_engine*>(t->data);
+
+        auto& w = get_output<la::cpu::tensor_like<double>>(t);
+
+        std::normal_distribution<double> dist;
+
+        double *w_data = w.data();
+
+        for (int i = 0; i < w.vec_size(); ++i) {
+            w_data[i] = dist(*gen);
+        }
+    }
+
+    void normal_grad(std::shared_ptr<op_t> t)
+    {
+    }
+
     std::shared_ptr<op_t> dropout_mask(std::shared_ptr<op_t> t, double prob, std::default_random_engine& gen)
     {
         auto& g = *t->graph;
