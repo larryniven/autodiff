@@ -78,7 +78,7 @@ namespace autodiff {
     void weak_var_grad(std::shared_ptr<op_t> t);
 
     std::shared_ptr<op_t> subtensor(std::shared_ptr<op_t> t,
-        std::vector<int> shift,
+        std::vector<unsigned int> shift,
         std::vector<unsigned int> sizes);
     void subtensor_eval(std::shared_ptr<op_t> t);
     void subtensor_grad(std::shared_ptr<op_t> t);

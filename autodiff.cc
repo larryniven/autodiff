@@ -140,7 +140,7 @@ namespace autodiff {
     }
 
     std::shared_ptr<op_t> subtensor(std::shared_ptr<op_t> t,
-        std::vector<int> shift,
+        std::vector<unsigned int> shift,
         std::vector<unsigned int> sizes)
     {
         assert(shift.size() == sizes.size());
@@ -153,7 +153,7 @@ namespace autodiff {
 
         result->grad_needed = t->grad_needed;
 
-        result->data = std::make_shared<std::pair<std::vector<int>,
+        result->data = std::make_shared<std::pair<std::vector<unsigned int>,
             std::vector<unsigned int>>>(std::make_pair(shift, sizes));
 
         if (!g.lazy) {
@@ -163,54 +163,79 @@ namespace autodiff {
         return result;
     }
 
-    template <class T>
-    void inc(std::vector<T>& indices, std::vector<T> const& bound, std::vector<T> const& shift)
+    std::vector<unsigned int> index_to_coord(int index,
+        std::vector<unsigned int> const& sizes)
     {
-        assert(indices.size() == bound.size());
+        std::vector<unsigned int> result;
 
-        int i = 0;
-        while (i < indices.size() && indices[i] + 1 >= bound[i]) {
-            indices[i] = shift[i];
-            ++i;
+        int i = index;
+        int prod = 1;
+
+        for (int d = 0; d < sizes.size() - 1; ++d) {
+            int c = i % sizes[d];
+            result.push_back(c);
+            i -= c;
+            prod *= sizes[d];
         }
 
-        if (i < indices.size()) {
-            ++indices[i];
+        result.push_back(index / prod);
+        std::reverse(result.begin(), result.end());
+
+        return result;
+    }
+
+    int coord_to_index(std::vector<unsigned int> c,
+        std::vector<unsigned int> const& sizes)
+    {
+        int result = 0;
+
+        for (int d = sizes.size() - 1; d >= 0; --d) {
+            result *= sizes[d];
+            result += c[d];
         }
+
+        return result;
     }
 
     void subtensor_eval(std::shared_ptr<op_t> t)
     {
         auto& a = get_output<la::cpu::tensor_like<double>>(get_child(t, 0));
 
-        auto& data = *std::static_pointer_cast<std::pair<std::vector<int>,
+        std::vector<unsigned int> shift;
+        std::vector<unsigned int> sizes;
+
+        std::tie(shift, sizes) = *std::static_pointer_cast<std::pair<std::vector<unsigned int>,
             std::vector<unsigned int>>>(t->data);
 
-        assert(a.dim() == data.first.size());
+        assert(a.dim() == shift.size());
 
-        for (int i = 0; i < data.first.size(); ++i) {
-            assert(data.first[i] + data.second[i] <= a.size(i));
+        for (int i = 0; i < shift.size(); ++i) {
+            assert(shift[i] + sizes[i] <= a.size(i));
         }
 
         if (t->output == nullptr) {
             la::cpu::tensor<double> c;
-            c.resize(data.second);
+            c.resize(sizes);
             t->output = std::make_shared<la::cpu::tensor<double>>(std::move(c));
         }
 
         auto& c = get_output<la::cpu::tensor_like<double>>(t);
 
-        std::vector<int> indices = data.first;
-        std::vector<int> bound;
-        bound.resize(indices.size());
+        double *c_data = c.data();
+        double const *a_data = a.data();
 
-        for (int i = 0; i < c.dim(); ++i) {
-            bound[i] = data.first[i] + data.second[i];
-        }
+        for (int i = 0; i < c.vec_size(); i += sizes[0]) {
+            std::vector<unsigned int> s = index_to_coord(i, sizes);
 
-        for (int i = 0; i < c.vec_size(); ++i) {
-            c.data()[i] = a(indices);
-            inc(indices, bound, data.first);
+            for (int j = 0; j < s.size(); ++j) {
+                s[j] += shift[j];
+            }
+
+            int j = coord_to_index(s, a.sizes());
+
+            for (int d = 0; d < sizes[0]; ++d) {
+                c_data[i + d] = a_data[j + d];
+            }
         }
     }
 
@@ -220,7 +245,10 @@ namespace autodiff {
 
         auto& a = get_output<la::cpu::tensor_like<double>>(ch);
 
-        auto& data = *std::static_pointer_cast<std::pair<std::vector<int>,
+        std::vector<unsigned int> shift;
+        std::vector<unsigned int> sizes;
+
+        std::tie(shift, sizes) = *std::static_pointer_cast<std::pair<std::vector<unsigned int>,
             std::vector<unsigned int>>>(t->data);
 
         if (ch->grad == nullptr) {
@@ -232,17 +260,21 @@ namespace autodiff {
         auto& ch_grad = get_grad<la::cpu::tensor_like<double>>(ch);
         auto& t_grad = get_grad<la::cpu::tensor_like<double>>(t);
 
-        std::vector<int> indices = data.first;
-        std::vector<int> bound;
-        bound.resize(indices.size());
+        double *ch_grad_data = ch_grad.data();
+        double const *t_grad_data = t_grad.data();
 
-        for (int i = 0; i < t_grad.dim(); ++i) {
-            bound[i] = data.first[i] + data.second[i];
-        }
+        for (int i = 0; i < t_grad.vec_size(); i += sizes[0]) {
+            std::vector<unsigned int> s = index_to_coord(i, sizes);
 
-        for (int i = 0; i < t_grad.vec_size(); ++i) {
-            ch_grad(indices) += t_grad.data()[i];
-            inc(indices, bound, data.first);
+            for (int j = 0; j < s.size(); ++j) {
+                s[j] += shift[j];
+            }
+
+            int j = coord_to_index(s, t_grad.sizes());
+
+            for (int d = 0; d < sizes[0]; ++d) {
+                ch_grad_data[j + d] += t_grad_data[i + d];
+            }
         }
     }
 
