@@ -290,11 +290,8 @@ namespace autodiff {
         { "ltmul", ltmul_eval },
         { "rtmul", rtmul_eval },
         { "emul", emul_eval },
-<<<<<<< HEAD
         { "emul_to", emul_to_eval },
-=======
         { "ediv", ediv_eval },
->>>>>>> c4c8601df52903bdb86f82b48cd44d75bdcdab5a
         { "logistic", logistic_eval },
         { "relu", relu_eval },
         { "tanh", tanh_eval },
@@ -335,11 +332,8 @@ namespace autodiff {
         { "ltmul", ltmul_grad },
         { "rtmul", rtmul_grad },
         { "emul", emul_grad },
-<<<<<<< HEAD
         { "emul_to", emul_to_grad },
-=======
         { "ediv", ediv_grad },
->>>>>>> c4c8601df52903bdb86f82b48cd44d75bdcdab5a
         { "logistic", logistic_grad },
         { "relu", relu_grad },
         { "tanh", tanh_grad },

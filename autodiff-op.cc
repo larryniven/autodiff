@@ -126,7 +126,12 @@ namespace autodiff {
         {
             assert(result.vec_size() == grad.vec_size() && grad.vec_size() == output.vec_size());
 
-            la::cpu::tensor<double> mu = la::cpu::vdot(grad, output);
+            la::cpu::tensor<double> mu;
+            std::vector<unsigned int> sizes = grad.sizes();
+            sizes.pop_back();
+            mu.resize(sizes);
+
+            la::cpu::vdot(mu, grad, output);
 
             la::cpu::matrix_like<double> const& output_m = output.as_matrix();
 
