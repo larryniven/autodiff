@@ -95,10 +95,13 @@ namespace autodiff {
     void rtmul_eval(std::shared_ptr<op_t> t);
     void rtmul_grad(std::shared_ptr<op_t> t);
 
-    std::shared_ptr<op_t> emul(std::shared_ptr<op_t> s, std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2);
     std::shared_ptr<op_t> emul(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2);
     void emul_eval(std::shared_ptr<op_t> t);
     void emul_grad(std::shared_ptr<op_t> t);
+
+    std::shared_ptr<op_t> emul_to(std::shared_ptr<op_t> s, std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2);
+    void emul_to_eval(std::shared_ptr<op_t> t);
+    void emul_to_grad(std::shared_ptr<op_t> t);
 
     std::shared_ptr<op_t> logistic(std::shared_ptr<op_t> input);
     void logistic_eval(std::shared_ptr<op_t> t);
@@ -254,6 +257,7 @@ namespace autodiff {
         { "ltmul", ltmul_eval },
         { "rtmul", rtmul_eval },
         { "emul", emul_eval },
+        { "emul_to", emul_to_eval },
         { "logistic", logistic_eval },
         { "relu", relu_eval },
         { "tanh", tanh_eval },
@@ -288,6 +292,7 @@ namespace autodiff {
         { "ltmul", ltmul_grad },
         { "rtmul", rtmul_grad },
         { "emul", emul_grad },
+        { "emul_to", emul_to_grad },
         { "logistic", logistic_grad },
         { "relu", relu_grad },
         { "tanh", tanh_grad },

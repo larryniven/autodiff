@@ -471,34 +471,6 @@ namespace autodiff {
         }
     }
 
-    std::shared_ptr<op_t> emul(std::shared_ptr<op_t> s,
-        std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2)
-    {
-        assert(t1->graph == t2->graph);
-        assert(t1->graph != nullptr);
-
-        auto& g = *t1->graph;
-
-        std::shared_ptr<op_t> result = g.make_node("emul");
-
-        g.add_edge(result, t1);
-        g.add_edge(result, t2);
-
-        result->output = s->output;
-        result->grad = s->grad;
-
-        result->grad_needed = (t1->grad_needed || t2->grad_needed);
-        s->grad_needed = (s->grad_needed || result->grad_needed);
-
-        g.add_edge(result, s);
-    
-        if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
-        }
-
-        return result;
-    }
-
     std::shared_ptr<op_t> emul(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2)
     {
         assert(t1->graph == t2->graph);
@@ -541,6 +513,85 @@ namespace autodiff {
 
         auto u_o = get_child(t, 0);
         auto v_o = get_child(t, 1);
+
+        auto& u = get_output<la::cpu::tensor_like<double>>(u_o);
+        auto& v = get_output<la::cpu::tensor_like<double>>(v_o);
+
+        if (u_o->grad_needed && u_o->grad == nullptr) {
+            la::cpu::tensor<double> g;
+            la::cpu::resize_as(g, u);
+            u_o->grad = std::make_shared<la::cpu::tensor<double>>(std::move(g));
+        }
+
+        if (v_o->grad_needed && v_o->grad == nullptr) {
+            la::cpu::tensor<double> g;
+            la::cpu::resize_as(g, v);
+            v_o->grad = std::make_shared<la::cpu::tensor<double>>(std::move(g));
+        }
+
+        auto& u_grad = get_grad<la::cpu::tensor_like<double>>(u_o);
+        auto& v_grad = get_grad<la::cpu::tensor_like<double>>(v_o);
+
+        if (u_o->grad_needed) {
+            la::cpu::emul(u_grad, grad, v);
+        }
+
+        if (v_o->grad_needed) {
+            la::cpu::emul(v_grad, grad, u);
+        }
+    }
+
+    std::shared_ptr<op_t> emul_to(std::shared_ptr<op_t> s,
+        std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2)
+    {
+        assert(t1->graph == t2->graph);
+        assert(t1->graph != nullptr);
+
+        auto& g = *t1->graph;
+
+        std::shared_ptr<op_t> result = g.make_node("emul_to");
+
+        g.add_edge(result, s);
+        g.add_edge(result, t1);
+        g.add_edge(result, t2);
+
+        result->output = s->output;
+
+        result->grad_needed = (t1->grad_needed || t2->grad_needed);
+        s->grad_needed = (s->grad_needed || result->grad_needed);
+
+        if (!g.lazy) {
+            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+        }
+
+        return result;
+    }
+
+    void emul_to_eval(std::shared_ptr<op_t> t)
+    {
+        auto& u = get_output<la::cpu::tensor_like<double>>(get_child(t, 1));
+        auto& v = get_output<la::cpu::tensor_like<double>>(get_child(t, 2));
+
+        auto& z = get_output<la::cpu::tensor_like<double>>(t);
+        la::cpu::emul(z, u, v);
+
+        auto storage = get_child(t, 0);
+
+        if (t->grad_needed && storage->grad == nullptr) {
+            la::cpu::tensor<double> g;
+            la::cpu::resize_as(g, z);
+            storage->grad = std::make_shared<la::cpu::tensor<double>>(std::move(g));
+        }
+
+        t->grad = storage->grad;
+    }
+
+    void emul_to_grad(std::shared_ptr<op_t> t)
+    {
+        auto& grad = get_grad<la::cpu::tensor_like<double>>(t);
+
+        auto u_o = get_child(t, 1);
+        auto v_o = get_child(t, 2);
 
         auto& u = get_output<la::cpu::tensor_like<double>>(u_o);
         auto& v = get_output<la::cpu::tensor_like<double>>(v_o);
@@ -840,7 +891,7 @@ namespace autodiff {
         for (int i = 1; i < g.adj[t->id].size(); ++i) {
             auto& u = get_output<la::cpu::tensor_like<double>>(get_child(t, i));
 
-            la::cpu::iadd(result, u);
+            la::cpu::axpy(result, 1, u);
         }
 
         if (t->grad_needed && storage->grad == nullptr) {
@@ -872,7 +923,7 @@ namespace autodiff {
             auto& u = get_grad<la::cpu::tensor_like<double>>(c);
 
             if (c->grad_needed) {
-                la::cpu::iadd(u, grad);
+                la::cpu::axpy(u, 1, grad);
             }
         }
     }
@@ -945,7 +996,7 @@ namespace autodiff {
         for (int i = 0; i < g.adj[t->id].size(); ++i) {
             auto& u = get_output<la::cpu::tensor_like<double>>(get_child(t, i));
 
-            la::cpu::iadd(result, u);
+            la::cpu::axpy(result, 1, u);
         }
     }
 
@@ -968,7 +1019,7 @@ namespace autodiff {
             auto& u = get_grad<la::cpu::tensor_like<double>>(c);
 
             if (c->grad_needed) {
-                la::cpu::iadd(u, grad);
+                la::cpu::axpy(u, 1, grad);
             }
         }
     }
@@ -1004,7 +1055,7 @@ namespace autodiff {
 
         auto& result = get_output<la::cpu::tensor_like<double>>(t);
         la::cpu::copy(result, u);
-        la::cpu::isub(result, v);
+        la::cpu::axpy(result, -1, v);
     }
 
     void sub_grad(std::shared_ptr<op_t> t)
@@ -1033,11 +1084,11 @@ namespace autodiff {
         auto& v_grad = get_grad<la::cpu::tensor_like<double>>(v_o);
 
         if (u_o->grad_needed) {
-            la::cpu::iadd(u_grad, grad);
+            la::cpu::axpy(u_grad, 1, grad);
         }
 
         if (v_o->grad_needed) {
-            la::cpu::isub(v_grad, grad);
+            la::cpu::axpy(v_grad, 1, grad);
         }
     }
 
