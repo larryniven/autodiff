@@ -83,6 +83,10 @@ namespace autodiff {
     void subtensor_eval(std::shared_ptr<op_t> t);
     void subtensor_grad(std::shared_ptr<op_t> t);
 
+    std::shared_ptr<op_t> sum(std::shared_ptr<op_t> t);
+    void sum_eval(std::shared_ptr<op_t> t);
+    void sum_grad(std::shared_ptr<op_t> t);
+
     std::shared_ptr<op_t> mul(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2);
     void mul_eval(std::shared_ptr<op_t> t);
     void mul_grad(std::shared_ptr<op_t> t);
@@ -103,6 +107,10 @@ namespace autodiff {
     void emul_to_eval(std::shared_ptr<op_t> t);
     void emul_to_grad(std::shared_ptr<op_t> t);
 
+    std::shared_ptr<op_t> ediv(std::shared_ptr<op_t> t1, std::shared_ptr<op_t> t2);
+    void ediv_eval(std::shared_ptr<op_t> t);
+    void ediv_grad(std::shared_ptr<op_t> t);
+
     std::shared_ptr<op_t> logistic(std::shared_ptr<op_t> input);
     void logistic_eval(std::shared_ptr<op_t> t);
     void logistic_grad(std::shared_ptr<op_t> t);
@@ -118,6 +126,10 @@ namespace autodiff {
     std::shared_ptr<op_t> exp(std::shared_ptr<op_t> input);
     void exp_eval(std::shared_ptr<op_t> t);
     void exp_grad(std::shared_ptr<op_t> t);
+
+    std::shared_ptr<op_t> log(std::shared_ptr<op_t> input);
+    void log_eval(std::shared_ptr<op_t> t);
+    void log_grad(std::shared_ptr<op_t> t);
 
     std::shared_ptr<op_t> add_to(std::shared_ptr<op_t> t, std::vector<std::shared_ptr<op_t>> ts);
     void add_to_eval(std::shared_ptr<op_t> t);
@@ -139,6 +151,10 @@ namespace autodiff {
     std::shared_ptr<op_t> softmax(std::shared_ptr<op_t> t);
     void softmax_eval(std::shared_ptr<op_t> t);
     void softmax_grad(std::shared_ptr<op_t> t);
+
+    std::shared_ptr<op_t> spatial_softmax(std::shared_ptr<op_t> t);
+    void spatial_softmax_eval(std::shared_ptr<op_t> t);
+    void spatial_softmax_grad(std::shared_ptr<op_t> t);
 
     std::shared_ptr<op_t> logsoftmax(std::shared_ptr<op_t> t);
     void logsoftmax_eval(std::shared_ptr<op_t> t);
@@ -189,6 +205,12 @@ namespace autodiff {
 
     std::shared_ptr<op_t> corr(std::shared_ptr<op_t> const& t1, std::shared_ptr<op_t> t2);
 
+    std::shared_ptr<op_t> corr_delinearize(std::shared_ptr<op_t> const& t1, std::shared_ptr<op_t> t2,
+        int p1, int p2, int d1, int d2);
+    std::shared_ptr<op_t> corr_delinearize(std::shared_ptr<op_t> const& t1, std::shared_ptr<op_t> t2);
+    void corr_delinearize_eval(std::shared_ptr<op_t> t);
+    void corr_delinearize_grad(std::shared_ptr<op_t> t);
+
     std::shared_ptr<op_t> pool_max(std::shared_ptr<op_t> t, int d1, int d2, int s1, int s2);
     void pool_max_eval(std::shared_ptr<op_t> t);
     void pool_max_grad(std::shared_ptr<op_t> t);
@@ -200,6 +222,16 @@ namespace autodiff {
     std::shared_ptr<op_t> high_pass_k(std::shared_ptr<op_t> t, int k);
     void high_pass_k_eval(std::shared_ptr<op_t> t);
     void high_pass_k_grad(std::shared_ptr<op_t> t);
+
+    std::shared_ptr<op_t> uniform(std::shared_ptr<op_t> t,
+        std::default_random_engine& gen);
+    void uniform_eval(std::shared_ptr<op_t> t);
+    void uniform_grad(std::shared_ptr<op_t> t);
+
+    std::shared_ptr<op_t> normal(std::shared_ptr<op_t> t,
+        std::default_random_engine& gen);
+    void normal_eval(std::shared_ptr<op_t> t);
+    void normal_grad(std::shared_ptr<op_t> t);
 
     std::shared_ptr<op_t> dropout_mask(std::shared_ptr<op_t> t, double prob,
         std::default_random_engine& gen);
@@ -253,20 +285,27 @@ namespace autodiff {
         { "var", var_eval },
         { "weak_var", weak_var_eval },
         { "subtensor", subtensor_eval },
+        { "sum", sum_eval },
         { "mul", mul_eval },
         { "ltmul", ltmul_eval },
         { "rtmul", rtmul_eval },
         { "emul", emul_eval },
+<<<<<<< HEAD
         { "emul_to", emul_to_eval },
+=======
+        { "ediv", ediv_eval },
+>>>>>>> c4c8601df52903bdb86f82b48cd44d75bdcdab5a
         { "logistic", logistic_eval },
         { "relu", relu_eval },
         { "tanh", tanh_eval },
         { "exp", exp_eval },
+        { "log", log_eval },
         { "add", add_eval },
         { "add_to", add_to_eval },
         { "sub", sub_eval },
         { "norm", norm_eval },
         { "softmax", softmax_eval },
+        { "spatial_softmax", spatial_softmax_eval },
         { "logsoftmax", logsoftmax_eval },
         { "dot", dot_eval },
         { "weak_cat", weak_cat_eval },
@@ -278,9 +317,12 @@ namespace autodiff {
         { "rep_row_to", rep_row_to_eval },
         { "rep_col_to", rep_col_to_eval },
         { "corr_linearize", corr_linearize_eval },
+        { "corr_delinearize", corr_delinearize_eval },
         { "pool_max", pool_max_eval },
         { "seg-max", seg_max_eval },
         { "high-pass-k", high_pass_k_eval },
+        { "uniform", uniform_eval },
+        { "normal", normal_eval },
         { "dropout_mask", dropout_mask_eval },
     };
 
@@ -288,20 +330,27 @@ namespace autodiff {
         { "var", var_grad },
         { "weak_var", weak_var_grad },
         { "subtensor", subtensor_grad },
+        { "sum", sum_grad },
         { "mul", mul_grad },
         { "ltmul", ltmul_grad },
         { "rtmul", rtmul_grad },
         { "emul", emul_grad },
+<<<<<<< HEAD
         { "emul_to", emul_to_grad },
+=======
+        { "ediv", ediv_grad },
+>>>>>>> c4c8601df52903bdb86f82b48cd44d75bdcdab5a
         { "logistic", logistic_grad },
         { "relu", relu_grad },
         { "tanh", tanh_grad },
         { "exp", exp_grad },
+        { "log", log_grad },
         { "add", add_grad },
         { "add_to", add_to_grad },
         { "sub", sub_grad },
         { "norm", norm_grad },
         { "softmax", softmax_grad },
+        { "spatial_softmax", spatial_softmax_grad },
         { "logsoftmax", logsoftmax_grad },
         { "dot", dot_grad },
         { "weak_cat", weak_cat_eval },
@@ -313,9 +362,12 @@ namespace autodiff {
         { "rep_row_to", rep_row_to_grad },
         { "rep_col_to", rep_col_to_grad },
         { "corr_linearize", corr_linearize_grad },
+        { "corr_delinearize", corr_delinearize_grad },
         { "pool_max", pool_max_grad },
         { "seg-max", seg_max_grad },
         { "high-pass-k", high_pass_k_grad },
+        { "uniform", uniform_grad },
+        { "normal", normal_grad },
         { "dropout_mask", dropout_mask_grad },
     };
 
