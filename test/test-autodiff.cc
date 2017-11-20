@@ -129,6 +129,7 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
         }
     }},
 
+#if 0
     {"test-2d-conv", []() {
         la::cpu::vector<double> u {
             0, 0, 0, 0, 0,
@@ -422,6 +423,7 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
         ebt::assert_equals(36, grad_u({1, 1, 1}));
 
     }},
+#endif
 
     {"test-dropout-mask", []() {
         la::cpu::vector<double> u {

@@ -36,6 +36,7 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
         auto output = autodiff::mul(g.var(dbt), g.var(dat));
 
         la::cpu::tensor<double> hc = to_host(autodiff::get_output<la::gpu::tensor_like<double>>(output));
+
         ebt::assert_equals(3, hc.vec_size());
         ebt::assert_equals(30, hc({0}));
         ebt::assert_equals(36, hc({1}));
