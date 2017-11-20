@@ -169,16 +169,14 @@ namespace autodiff {
         std::vector<unsigned int> result;
 
         int i = index;
-        int prod = 1;
 
-        for (int d = 0; d < sizes.size() - 1; ++d) {
+        for (int d = sizes.size() - 1; d > 0; --d) {
             int c = i % sizes[d];
             result.push_back(c);
-            i -= c;
-            prod *= sizes[d];
+            i = (i - c) / sizes[d];
         }
 
-        result.push_back(index / prod);
+        result.push_back(i);
         std::reverse(result.begin(), result.end());
 
         return result;
@@ -189,7 +187,7 @@ namespace autodiff {
     {
         int result = 0;
 
-        for (int d = sizes.size() - 1; d >= 0; --d) {
+        for (int d = 0; d < sizes.size(); ++d) {
             result *= sizes[d];
             result += c[d];
         }
@@ -224,6 +222,8 @@ namespace autodiff {
         double *c_data = c.data();
         double const *a_data = a.data();
 
+        std::vector<unsigned int> const& a_sizes = a.sizes();
+
         for (int i = 0; i < c.vec_size(); i += sizes[0]) {
             std::vector<unsigned int> s = index_to_coord(i, sizes);
 
@@ -231,7 +231,7 @@ namespace autodiff {
                 s[j] += shift[j];
             }
 
-            int j = coord_to_index(s, a.sizes());
+            int j = coord_to_index(s, a_sizes);
 
             for (int d = 0; d < sizes[0]; ++d) {
                 c_data[i + d] = a_data[j + d];
@@ -1547,7 +1547,7 @@ namespace autodiff {
         auto& v_grad = get_grad<la::cpu::tensor_like<double>>(c0);
 
         if (c0->grad_needed) {
-            axpy(v_grad, grad, u);
+            la::cpu::axpy(v_grad, grad, u);
         }
 
         if (c1->grad_needed && c1->grad == nullptr) {
@@ -1559,7 +1559,7 @@ namespace autodiff {
         auto& u_grad = get_grad<la::cpu::tensor_like<double>>(c1);
 
         if (c1->grad_needed) {
-            axpy(u_grad, grad, v);
+            la::cpu::axpy(u_grad, grad, v);
         }
     }
 

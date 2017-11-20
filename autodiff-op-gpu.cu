@@ -2,6 +2,7 @@
 #include "la/la-gpu.h"
 #include <thrust/for_each.h>
 #include <thrust/iterator/zip_iterator.h>
+#include <thrust/iterator/discard_iterator.h>
 #include <thrust/device_ptr.h>
 #include <thrust/reduce.h>
 #include <thrust/execution_policy.h>
@@ -37,7 +38,7 @@ namespace autodiff {
 
             struct ilogistic_op {
                 template <class T>
-                __host__ __device__
+                __device__
                 void operator()(T t) const
                 {
                     thrust::get<0>(t) = 1 / (1 + exp(-thrust::get<1>(t)));
@@ -60,7 +61,7 @@ namespace autodiff {
 
             struct ilogistic_grad_op {
                 template <class T>
-                __host__ __device__
+                __device__
                 void operator()(T t) const
                 {
                     auto& result = thrust::get<0>(t);
@@ -91,7 +92,7 @@ namespace autodiff {
 
             struct relu_op {
                 template <class T>
-                __host__ __device__
+                __device__
                 void operator()(T t) const
                 {
                     thrust::get<0>(t) = (thrust::get<1>(t) > 0 ? thrust::get<1>(t) : 0);
@@ -114,7 +115,7 @@ namespace autodiff {
 
             struct irelu_grad_op {
                 template <class T>
-                __host__ __device__
+                __device__
                 void operator()(T t) const
                 {
                     auto& result = thrust::get<0>(t);
@@ -145,7 +146,7 @@ namespace autodiff {
 
             struct tanh_op {
                 template <class T>
-                __host__ __device__
+                __device__
                 void operator()(T t) const
                 {
                     auto& result = thrust::get<0>(t);
@@ -177,7 +178,7 @@ namespace autodiff {
 
             struct itanh_grad_op {
                 template <class T>
-                __host__ __device__
+                __device__
                 void operator()(T t) const
                 {
                     auto& result = thrust::get<0>(t);
@@ -207,7 +208,7 @@ namespace autodiff {
             }
 
             struct log_add_op {
-                __host__ __device__
+                __device__
                 double operator()(double a, double b) const
                 {
                     if (a > b) {
@@ -222,7 +223,7 @@ namespace autodiff {
                 double s;
 
                 template <class T>
-                __host__ __device__
+                __device__
                 void operator()(T t) const
                 {
                     thrust::get<0>(t) = exp(thrust::get<1>(t) - s);
@@ -254,7 +255,7 @@ namespace autodiff {
                 double mu;
 
                 template <class T>
-                __host__ __device__
+                __device__
                 void operator()(T t) const
                 {
                     auto& result = thrust::get<0>(t);
@@ -289,7 +290,7 @@ namespace autodiff {
             struct key_op {
                 unsigned int cols;
 
-                __host__ __device__
+                __device__
                 int operator()(int i)
                 {
                     return i / cols;
@@ -334,13 +335,13 @@ namespace autodiff {
 
                 la::gpu::weak_matrix<double> u_m {u.data(), m.rows(), m.cols()};
 
-                la::gpu::iadd(u_m, m);
-                la::gpu::isub(u_m, logZ_m);
+                la::gpu::axpy(u_m, 1, m);
+                la::gpu::axpy(u_m, -1, logZ_m);
             }
 
             struct ilogsoftmax_grad_op {
                 template <class T>
-                __host__ __device__
+                __device__
                 void operator()(T t) const
                 {
                     auto& result = thrust::get<0>(t);

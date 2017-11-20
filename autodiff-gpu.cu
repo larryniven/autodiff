@@ -5,6 +5,8 @@
 #include <thrust/transform.h>
 #include <thrust/reduce.h>
 #include <thrust/device_ptr.h>
+#include <thrust/for_each.h>
+#include <algorithm>
 
 namespace autodiff {
 
@@ -39,6 +41,137 @@ namespace autodiff {
 
         void weak_var_grad(std::shared_ptr<op_t> t)
         {
+        }
+
+        struct subtensor_op {
+
+            double *c_data;
+            double const *a_data;
+            unsigned int dim;
+            unsigned int const *shift;
+            unsigned int const *sizes;
+            unsigned int const *a_sizes;
+
+            __device__
+            void index_to_coord(int index, double *coord)
+            {
+                int i = index;
+
+                for (int d = dim - 1; d > 0; --d) {
+                    int c = i % sizes[d];
+                    coord[d] = c;
+                    i = (i - c) / sizes[d];
+                }
+
+                coord[0] = i;
+            }
+
+            __device__
+            int coord_to_index(double *coord)
+            {
+                int result = 0;
+
+                for (int d = 0; d < dim; ++d) {
+                    result *= a_sizes[d];
+                    result += coord[d];
+                }
+
+                return result;
+            }
+
+            __device__
+            void operator()(int i)
+            {
+                double *coord = (double*) malloc(dim);
+
+                for (int i = 0; i < dim; ++i) {
+                    coord[i] = 0;
+                }
+
+                index_to_coord(i, coord);
+
+                for (int j = 0; j < dim; ++j) {
+                    coord[j] += shift[j];
+                }
+
+                int j = coord_to_index(coord);
+
+                printf("%d %d\n", i, j);
+
+                c_data[i] += a_data[j];
+
+                free(coord);
+            }
+
+        };
+
+        void subtensor_eval(std::shared_ptr<op_t> t)
+        {
+            auto& a = get_output<la::gpu::tensor_like<double>>(get_child(t, 0));
+
+            std::vector<unsigned int> shift;
+            std::vector<unsigned int> sizes;
+
+            std::tie(shift, sizes) = *std::static_pointer_cast<std::pair<std::vector<unsigned int>,
+                std::vector<unsigned int>>>(t->data);
+
+            assert(a.dim() == shift.size());
+
+            for (int i = 0; i < shift.size(); ++i) {
+                assert(shift[i] + sizes[i] <= a.size(i));
+            }
+
+            if (t->output == nullptr) {
+                la::gpu::tensor<double> c;
+                c.resize(sizes);
+                t->output = std::make_shared<la::gpu::tensor<double>>(std::move(c));
+            }
+
+            auto& c = get_output<la::gpu::tensor_like<double>>(t);
+
+            thrust::counting_iterator<int> c_begin {0};
+            thrust::counting_iterator<int> c_end = c_begin + c.vec_size();
+
+            la::gpu::vector<unsigned int> dshift { la::cpu::vector<unsigned int>(shift) };
+            la::gpu::vector<unsigned int> dsizes { la::cpu::vector<unsigned int>(sizes) };
+            la::gpu::vector<unsigned int> dasizes { la::cpu::vector<unsigned int>(a.sizes()) };
+
+            thrust::for_each(c_begin, c_end,
+                subtensor_op { c.data(), a.data(), dshift.size(),
+                    dshift.data(), dsizes.data(), dasizes.data() });
+        }
+
+        void subtensor_grad(std::shared_ptr<op_t> t)
+        {
+            auto ch = get_child(t, 0);
+
+            auto& a = get_output<la::gpu::tensor_like<double>>(ch);
+
+            std::vector<unsigned int> shift;
+            std::vector<unsigned int> sizes;
+
+            std::tie(shift, sizes) = *std::static_pointer_cast<std::pair<std::vector<unsigned int>,
+                std::vector<unsigned int>>>(t->data);
+
+            if (ch->grad == nullptr) {
+                la::gpu::tensor<double> c;
+                c.resize(a.sizes());
+                ch->grad = std::make_shared<la::gpu::tensor<double>>(std::move(c));
+            }
+
+            auto& ch_grad = get_grad<la::gpu::tensor_like<double>>(ch);
+            auto& t_grad = get_grad<la::gpu::tensor_like<double>>(t);
+
+            thrust::counting_iterator<int> c_begin {0};
+            thrust::counting_iterator<int> c_end = c_begin + t_grad.vec_size();
+
+            la::gpu::vector<unsigned int> dshift { la::cpu::vector<unsigned int>(shift) };
+            la::gpu::vector<unsigned int> dsizes { la::cpu::vector<unsigned int>(sizes) };
+            la::gpu::vector<unsigned int> dasizes { la::cpu::vector<unsigned int>(a.sizes()) };
+
+            thrust::for_each(c_begin, c_end,
+                subtensor_op { ch_grad.data(), t_grad.data(), dshift.size(),
+                    dshift.data(), dsizes.data(), dasizes.data() });
         }
 
         void mul_eval(std::shared_ptr<op_t> t)
@@ -246,7 +379,7 @@ namespace autodiff {
             for (int i = 0; i < g.adj[t->id].size(); ++i) {
                 auto& u = get_output<la::gpu::tensor_like<double>>(get_child(t, i));
 
-                la::gpu::iadd(result, u);
+                la::gpu::axpy(result, 1, u);
             }
         }
 
@@ -269,7 +402,7 @@ namespace autodiff {
                 auto& u = get_grad<la::gpu::tensor_like<double>>(c);
 
                 if (c->grad_needed) {
-                    la::gpu::iadd(u, grad);
+                    la::gpu::axpy(u, 1, grad);
                 }
             }
         }
@@ -287,7 +420,7 @@ namespace autodiff {
 
             auto& result = get_output<la::gpu::tensor_like<double>>(t);
             la::gpu::copy(result, u);
-            la::gpu::isub(result, v);
+            la::gpu::axpy(result, -1, v);
         }
 
         void sub_grad(std::shared_ptr<op_t> t)
@@ -316,11 +449,11 @@ namespace autodiff {
             auto& v_grad = get_grad<la::gpu::tensor_like<double>>(v_o);
 
             if (u_o->grad_needed) {
-                la::gpu::iadd(u_grad, grad);
+                la::gpu::axpy(u_grad, 1, grad);
             }
 
             if (v_o->grad_needed) {
-                la::gpu::isub(v_grad, grad);
+                la::gpu::axpy(v_grad, -1, grad);
             }
         }
 
@@ -356,6 +489,51 @@ namespace autodiff {
 
             if (ch->grad_needed) {
                 op::gpu::ilogsoftmax_grad(result, grad, output);
+            }
+        }
+
+        void dot_eval(std::shared_ptr<op_t> t)
+        {
+            auto& v = get_output<la::gpu::tensor_like<double>>(get_child(t, 0));
+            auto& u = get_output<la::gpu::tensor_like<double>>(get_child(t, 1));
+
+            t->output = std::make_shared<double>(la::gpu::dot(v, u));
+        }
+
+        void dot_grad(std::shared_ptr<op_t> t)
+        {
+            auto c0 = get_child(t, 0);
+            auto c1 = get_child(t, 1);
+
+            auto& v = get_output<la::gpu::tensor_like<double>>(c0);
+            auto& u = get_output<la::gpu::tensor_like<double>>(c1);
+
+            assert(v.vec_size() == u.vec_size());
+
+            double grad = get_grad<double>(t);
+
+            if (c0->grad_needed && c0->grad == nullptr) {
+                la::gpu::tensor<double> g;
+                la::gpu::resize_as(g, u);
+                c0->grad = std::make_shared<la::gpu::tensor<double>>(std::move(g));
+            }
+
+            auto& v_grad = get_grad<la::gpu::tensor_like<double>>(c0);
+
+            if (c0->grad_needed) {
+                la::gpu::axpy(v_grad, grad, u);
+            }
+
+            if (c1->grad_needed && c1->grad == nullptr) {
+                la::gpu::tensor<double> g;
+                la::gpu::resize_as(g, v);
+                c1->grad = std::make_shared<la::gpu::tensor<double>>(std::move(g));
+            }
+
+            auto& u_grad = get_grad<la::gpu::tensor_like<double>>(c1);
+
+            if (c1->grad_needed) {
+                la::gpu::axpy(u_grad, grad, v);
             }
         }
 
@@ -420,7 +598,8 @@ namespace autodiff {
                 auto& g = autodiff::get_grad<la::gpu::tensor_like<double>>(c);
 
                 if (c->grad_needed) {
-                    la::gpu::iadd(g.as_vector(), la::gpu::weak_vector<double>(z.data() + i * m.cols(), m.cols()));
+                    la::gpu::axpy(g.as_vector(), 1,
+                        la::gpu::weak_vector<double>(z.data() + i * m.cols(), m.cols()));
                 }
             }
         }
@@ -438,6 +617,8 @@ namespace autodiff {
 
             la::gpu::weak_tensor<double> result { input.data(), sizes };
             t->output = std::make_shared<la::gpu::weak_tensor<double>>(result);
+
+            auto c = get_child(t, 0);
 
             if (c->grad_needed && c->grad == nullptr) {
                 la::gpu::tensor<double> g;

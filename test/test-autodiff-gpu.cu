@@ -2,22 +2,24 @@
 #include "la/la-gpu.h"
 
 std::vector<std::pair<std::string, std::function<void(void)>>> tests {
-    // {"test-dot", []() {
-    //     la::vector<double> ha {1, 2, 3};
-    //     la::gpu::vector<double> da { ha };
+    {"test-dot", []() {
+        la::cpu::vector<double> a {1, 2, 3};
+        la::gpu::vector<double> da { a };
+        la::gpu::tensor<double> dat { da, {3} };
 
-    //     la::vector<double> hb {1, 2, 3};
-    //     la::gpu::vector<double> db { hb };
+        la::cpu::vector<double> b {1, 2, 3};
+        la::gpu::vector<double> db { b };
+        la::gpu::tensor<double> dbt { db, {3} };
 
-    //     autodiff::interpreter& itp = autodiff::interpreter::get_instance();
-    //     itp.eval_funcs = autodiff::gpu::eval_funcs;
-    //     itp.grad_funcs = autodiff::gpu::grad_funcs;
+        autodiff::interpreter& itp = autodiff::interpreter::get_instance();
+        itp.eval_funcs = autodiff::gpu::eval_funcs;
+        itp.grad_funcs = autodiff::gpu::grad_funcs;
 
-    //     autodiff::computation_graph g;
-    //     auto output = autodiff::dot(g.var(da), g.var(db));
+        autodiff::computation_graph g;
+        auto output = autodiff::dot(g.var(dat), g.var(dbt));
 
-    //     ebt::assert_equals(14, autodiff::get_output<double>(output));
-    // }},
+        ebt::assert_equals(14, autodiff::get_output<double>(output));
+    }},
 
     {"test-mul", []() {
         la::cpu::vector<double> ha {1, 2, 3, 4, 5, 6, 7, 8, 9};
@@ -229,6 +231,58 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
             ebt::assert_equals(grad_expected(2), grad_result(2));
         }
 #endif
+    }},
+
+    {"test-subtensor", []() {
+        autodiff::interpreter& itp = autodiff::interpreter::get_instance();
+        itp.eval_funcs = autodiff::gpu::eval_funcs;
+        itp.grad_funcs = autodiff::gpu::grad_funcs;
+
+        la::cpu::vector<double> u {
+            1, 2, 3, 4,
+            5, 6, 7, 8,
+            9, 10, 11, 12,
+            13, 14, 15, 16,
+
+            17, 18, 19, 20,
+            21, 22, 23, 24,
+            25, 26, 27, 28,
+            29, 30, 31, 32,
+
+            33, 34, 35, 36,
+            37, 38, 39, 40,
+            41, 42, 43, 44,
+            45, 46, 47, 48,
+
+            49, 50, 51, 52,
+            53, 54, 55, 56,
+            57, 58, 59, 60,
+            61, 62, 63, 64
+        };
+
+        la::gpu::tensor<double> dt { la::gpu::vector<double>(u), {4, 4, 4} };
+
+        autodiff::computation_graph g;
+
+        auto a = g.var(dt);
+        auto b = autodiff::subtensor(a, {1, 1, 1}, {2, 2, 2});
+
+        auto& bt = autodiff::get_output<la::gpu::tensor_like<double>>(b);
+
+        la::cpu::tensor<double> hb = la::gpu::to_host(bt);
+
+        ebt::assert_equals(2, hb.size(0));
+        ebt::assert_equals(2, hb.size(1));
+        ebt::assert_equals(2, hb.size(2));
+
+        ebt::assert_equals(22, hb({0, 0, 0}));
+        ebt::assert_equals(23, hb({0, 0, 1}));
+        ebt::assert_equals(26, hb({0, 1, 0}));
+        ebt::assert_equals(27, hb({0, 1, 1}));
+        ebt::assert_equals(38, hb({1, 0, 0}));
+        ebt::assert_equals(39, hb({1, 0, 1}));
+        ebt::assert_equals(42, hb({1, 1, 0}));
+        ebt::assert_equals(43, hb({1, 1, 1}));
     }},
 
 };

@@ -11,6 +11,9 @@ namespace autodiff {
         void weak_var_eval(std::shared_ptr<op_t> t);
         void weak_var_grad(std::shared_ptr<op_t> t);
 
+        void subtensor_eval(std::shared_ptr<op_t> t);
+        void subtensor_grad(std::shared_ptr<op_t> t);
+
         void mul_eval(std::shared_ptr<op_t> t);
         void mul_grad(std::shared_ptr<op_t> t);
 
@@ -32,6 +35,9 @@ namespace autodiff {
         void logsoftmax_eval(std::shared_ptr<op_t> t);
         void logsoftmax_grad(std::shared_ptr<op_t> t);
 
+        void dot_eval(std::shared_ptr<op_t> t);
+        void dot_grad(std::shared_ptr<op_t> t);
+
         void row_cat_eval(std::shared_ptr<op_t> t);
         void row_cat_grad(std::shared_ptr<op_t> t);
 
@@ -50,6 +56,7 @@ namespace autodiff {
         static std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> eval_funcs {
             { "var", var_eval },
             { "weak_var", weak_var_eval },
+            { "subtensor", subtensor_eval },
             { "mul", mul_eval },
             { "emul", emul_eval },
             { "logistic", logistic_eval },
@@ -57,6 +64,7 @@ namespace autodiff {
             { "add", add_eval },
             { "sub", sub_eval },
             { "logsoftmax", logsoftmax_eval },
+            { "dot", dot_eval },
             { "row_cat", row_cat_eval },
             { "resize_as", resize_as_eval },
             { "rep_row_to", rep_row_to_eval },
@@ -67,6 +75,7 @@ namespace autodiff {
         static std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> grad_funcs {
             { "var", var_grad },
             { "weak_var", weak_var_grad },
+            { "subtensor", subtensor_grad },
             { "mul", mul_grad },
             { "emul", emul_grad },
             { "logistic", logistic_grad },
@@ -74,6 +83,7 @@ namespace autodiff {
             { "add", add_grad },
             { "sub", sub_grad },
             { "logsoftmax", logsoftmax_grad },
+            { "dot", dot_grad },
             { "row_cat", row_cat_grad },
             { "resize_as", resize_as_grad },
             { "rep_row_to", rep_row_to_grad },
