@@ -612,6 +612,28 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
         ebt::assert_equals(42, bt({1, 1, 0}));
         ebt::assert_equals(43, bt({1, 1, 1}));
     }},
+
+    {"test-emul-to", []() {
+        la::cpu::vector<double> u {1, 2, 3};
+        la::cpu::tensor<double> ut { u, {3} };
+
+        la::cpu::vector<double> v {1, 2, 3};
+        la::cpu::tensor<double> vt { v, {3} };
+
+        la::cpu::tensor<double> t;
+        t.resize({3});
+
+        autodiff::computation_graph g;
+        auto storage = g.var(t);
+
+        auto r = autodiff::emul_to(storage, g.var(ut), g.var(vt));
+
+        auto& rt = autodiff::get_output<la::cpu::tensor_like<double>>(r);
+
+        ebt::assert_equals(1, rt({0}));
+        ebt::assert_equals(4, rt({1}));
+        ebt::assert_equals(9, rt({2}));
+    }},
 };
 
 int main()

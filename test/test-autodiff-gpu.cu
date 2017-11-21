@@ -285,6 +285,34 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
         ebt::assert_equals(43, hb({1, 1, 1}));
     }},
 
+    {"test-emul-to", []() {
+        autodiff::interpreter& itp = autodiff::interpreter::get_instance();
+        itp.eval_funcs = autodiff::gpu::eval_funcs;
+        itp.grad_funcs = autodiff::gpu::grad_funcs;
+
+        la::cpu::vector<double> u {1, 2, 3};
+        la::gpu::vector<double> du { u };
+        la::gpu::tensor<double> dut { du, {3} };
+
+        la::cpu::vector<double> v {1, 2, 3};
+        la::gpu::vector<double> dv { v };
+        la::gpu::tensor<double> dvt { dv, {3} };
+
+        la::gpu::tensor<double> t;
+        t.resize({3});
+
+        autodiff::computation_graph g;
+        auto storage = g.var(t);
+
+        auto r = autodiff::emul_to(storage, g.var(dut), g.var(dvt));
+
+        auto& rt = autodiff::get_output<la::gpu::tensor_like<double>>(r);
+        la::cpu::tensor<double> ht = la::gpu::to_host(rt);
+
+        ebt::assert_equals(1, ht({0}));
+        ebt::assert_equals(4, ht({1}));
+        ebt::assert_equals(9, ht({2}));
+    }},
 };
 
 int main()

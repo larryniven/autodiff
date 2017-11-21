@@ -20,6 +20,9 @@ namespace autodiff {
         void emul_eval(std::shared_ptr<op_t> t);
         void emul_grad(std::shared_ptr<op_t> t);
 
+        void emul_to_eval(std::shared_ptr<op_t> t);
+        void emul_to_grad(std::shared_ptr<op_t> t);
+
         void logistic_eval(std::shared_ptr<op_t> t);
         void logistic_grad(std::shared_ptr<op_t> t);
 
@@ -37,6 +40,9 @@ namespace autodiff {
 
         void dot_eval(std::shared_ptr<op_t> t);
         void dot_grad(std::shared_ptr<op_t> t);
+
+        void weak_cat_eval(std::shared_ptr<op_t> t);
+        void weak_cat_grad(std::shared_ptr<op_t> t);
 
         void row_cat_eval(std::shared_ptr<op_t> t);
         void row_cat_grad(std::shared_ptr<op_t> t);
@@ -59,12 +65,14 @@ namespace autodiff {
             { "subtensor", subtensor_eval },
             { "mul", mul_eval },
             { "emul", emul_eval },
+            { "emul_to", emul_to_eval },
             { "logistic", logistic_eval },
             { "tanh", tanh_eval },
             { "add", add_eval },
             { "sub", sub_eval },
             { "logsoftmax", logsoftmax_eval },
             { "dot", dot_eval },
+            { "weak_cat", weak_cat_eval },
             { "row_cat", row_cat_eval },
             { "resize_as", resize_as_eval },
             { "rep_row_to", rep_row_to_eval },
@@ -78,12 +86,14 @@ namespace autodiff {
             { "subtensor", subtensor_grad },
             { "mul", mul_grad },
             { "emul", emul_grad },
+            { "emul_to", emul_to_grad },
             { "logistic", logistic_grad },
             { "tanh", tanh_grad },
             { "add", add_grad },
             { "sub", sub_grad },
             { "logsoftmax", logsoftmax_grad },
             { "dot", dot_grad },
+            { "weak_cat", weak_cat_grad },
             { "row_cat", row_cat_grad },
             { "resize_as", resize_as_grad },
             { "rep_row_to", rep_row_to_grad },

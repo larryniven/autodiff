@@ -96,8 +96,6 @@ namespace autodiff {
 
                 int j = coord_to_index(coord);
 
-                printf("%d %d\n", i, j);
-
                 c_data[i] += a_data[j];
 
                 free(coord);
@@ -251,6 +249,59 @@ namespace autodiff {
 
             auto u_o = get_child(t, 0);
             auto v_o = get_child(t, 1);
+
+            auto& u = get_output<la::gpu::tensor_like<double>>(u_o);
+            auto& v = get_output<la::gpu::tensor_like<double>>(v_o);
+
+            if (u_o->grad_needed && u_o->grad == nullptr) {
+                la::gpu::tensor<double> g;
+                la::gpu::resize_as(g, u);
+                u_o->grad = std::make_shared<la::gpu::tensor<double>>(std::move(g));
+            }
+
+            if (v_o->grad_needed && v_o->grad == nullptr) {
+                la::gpu::tensor<double> g;
+                la::gpu::resize_as(g, v);
+                v_o->grad = std::make_shared<la::gpu::tensor<double>>(std::move(g));
+            }
+
+            auto& u_grad = get_grad<la::gpu::tensor_like<double>>(u_o);
+            auto& v_grad = get_grad<la::gpu::tensor_like<double>>(v_o);
+
+            if (u_o->grad_needed) {
+                la::gpu::emul(u_grad, grad, v);
+            }
+
+            if (v_o->grad_needed) {
+                la::gpu::emul(v_grad, grad, u);
+            }
+        }
+
+        void emul_to_eval(std::shared_ptr<op_t> t)
+        {
+            auto& u = get_output<la::gpu::tensor_like<double>>(get_child(t, 1));
+            auto& v = get_output<la::gpu::tensor_like<double>>(get_child(t, 2));
+
+            auto& z = get_output<la::gpu::tensor_like<double>>(t);
+            la::gpu::emul(z, u, v);
+
+            auto storage = get_child(t, 0);
+
+            if (t->grad_needed && storage->grad == nullptr) {
+                la::gpu::tensor<double> g;
+                la::gpu::resize_as(g, z);
+                storage->grad = std::make_shared<la::gpu::tensor<double>>(std::move(g));
+            }
+
+            t->grad = storage->grad;
+        }
+
+        void emul_to_grad(std::shared_ptr<op_t> t)
+        {
+            auto& grad = get_grad<la::gpu::tensor_like<double>>(t);
+
+            auto u_o = get_child(t, 1);
+            auto v_o = get_child(t, 2);
 
             auto& u = get_output<la::gpu::tensor_like<double>>(u_o);
             auto& v = get_output<la::gpu::tensor_like<double>>(v_o);
@@ -535,6 +586,35 @@ namespace autodiff {
             if (c1->grad_needed) {
                 la::gpu::axpy(u_grad, grad, v);
             }
+        }
+
+        void weak_cat_eval(std::shared_ptr<op_t> t)
+        {
+            auto& graph = *t->graph;
+
+            auto storage = graph.vertices[graph.adj[t->id].back()];
+
+            if (t->grad_needed && storage->grad == nullptr) {
+                auto& storage_t = get_output<la::gpu::tensor_like<double>>(storage);
+                la::gpu::tensor<double> zeros;
+                la::gpu::resize_as(zeros, storage_t);
+                storage->grad = std::make_shared<la::gpu::tensor<double>>(zeros);
+                t->grad = storage->grad;
+
+                unsigned long size = 0;
+                for (int i = 0; i < graph.adj[t->id].size() - 1; ++i) {
+                    auto ch = get_child(t, i);
+                    auto& ch_t = get_output<la::gpu::tensor_like<double>>(ch);
+                    la::gpu::weak_tensor<double> g { storage_t.data() + size, ch_t.sizes() };
+                    ch->grad = std::make_shared<la::gpu::weak_tensor<double>>(g);
+                }
+            }
+
+            t->grad = storage->grad;
+        }
+
+        void weak_cat_grad(std::shared_ptr<op_t> t)
+        {
         }
 
         void row_cat_eval(std::shared_ptr<op_t> t)
