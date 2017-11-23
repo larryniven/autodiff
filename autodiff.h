@@ -14,15 +14,6 @@ namespace autodiff {
     struct op_t;
     struct computation_graph;
 
-    struct interpreter {
-        std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> eval_funcs;
-        std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> grad_funcs;
-
-        interpreter();
-
-        static interpreter& get_instance();
-    };
-
     struct op_t {
         op_t();
 
@@ -39,6 +30,9 @@ namespace autodiff {
     };
 
     struct computation_graph {
+        std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> eval_funcs;
+        std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> grad_funcs;
+
         bool lazy;
 
         std::vector<std::shared_ptr<op_t>> vertices; 
@@ -71,6 +65,10 @@ namespace autodiff {
 
     inline void var_eval(std::shared_ptr<op_t> t) {};
     inline void var_grad(std::shared_ptr<op_t> t) {};
+
+    std::shared_ptr<op_t> zeros(computation_graph& graph, std::vector<unsigned int> sizes);
+    void zeros_eval(std::shared_ptr<op_t> t);
+    void zeros_grad(std::shared_ptr<op_t> t);
 
     std::shared_ptr<op_t> weak_var(std::shared_ptr<op_t> t,
         int shift, std::vector<unsigned int> sizes);
@@ -282,6 +280,7 @@ namespace autodiff {
     }
 
     static std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> eval_funcs {
+        { "zeros", zeros_eval },
         { "var", var_eval },
         { "weak_var", weak_var_eval },
         { "subtensor", subtensor_eval },
@@ -324,6 +323,7 @@ namespace autodiff {
     };
 
     static std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> grad_funcs {
+        { "zeros", zeros_grad },
         { "var", var_grad },
         { "weak_var", weak_var_grad },
         { "subtensor", subtensor_grad },

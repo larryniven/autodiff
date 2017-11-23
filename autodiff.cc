@@ -8,19 +8,6 @@
 
 namespace autodiff {
 
-    interpreter::interpreter()
-        : eval_funcs(autodiff::eval_funcs)
-        , grad_funcs(autodiff::grad_funcs)
-    {
-    }
-
-    interpreter& interpreter::get_instance()
-    {
-        static interpreter instance;
-
-        return instance;
-    }
-
     op_t::op_t()
         : output(nullptr), grad(nullptr)
     {}
@@ -30,7 +17,9 @@ namespace autodiff {
     {}
 
     computation_graph::computation_graph(computation_graph const& graph)
-        : lazy(false), vertices(graph.vertices), adj(graph.adj)
+        : eval_funcs(graph.eval_funcs)
+        , grad_funcs(graph.grad_funcs)
+        , lazy(false), vertices(graph.vertices), adj(graph.adj)
     {
         for (auto& v: vertices) {
             v->graph = this;
@@ -39,6 +28,8 @@ namespace autodiff {
 
     computation_graph& computation_graph::operator=(computation_graph const& other)
     {
+        eval_funcs = other.eval_funcs;
+        grad_funcs = other.eval_funcs;
         lazy = other.lazy;
         vertices = other.vertices;
         adj = other.adj;
@@ -87,6 +78,33 @@ namespace autodiff {
         g.add_edge(t, ch);
     }
 
+    std::shared_ptr<op_t> zeros(computation_graph& g, std::vector<unsigned int> sizes)
+    {
+        std::shared_ptr<op_t> result = g.make_node("zeros");
+
+        result->data = std::make_shared<std::vector<unsigned int>>(sizes);
+
+        if (!g.lazy) {
+            eval_vertex(result, g.eval_funcs);
+        }
+
+        return result;
+    }
+
+    void zeros_eval(std::shared_ptr<op_t> t)
+    {
+        std::vector<unsigned int> const& sizes
+            = *std::static_pointer_cast<std::vector<unsigned int>>(t->data);
+
+        la::cpu::tensor<double> z;
+        z.resize(sizes);
+
+        t->output = std::make_shared<la::cpu::tensor<double>>(z);
+    }
+
+    void zeros_grad(std::shared_ptr<op_t> t)
+    {}
+
     std::shared_ptr<op_t> weak_var(std::shared_ptr<op_t> t,
         int shift, std::vector<unsigned int> sizes)
     {
@@ -102,7 +120,7 @@ namespace autodiff {
         result->grad_needed = t->grad_needed;
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
 
         return result;
@@ -157,7 +175,7 @@ namespace autodiff {
             std::vector<unsigned int>>>(std::make_pair(shift, sizes));
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
 
         return result;
@@ -270,7 +288,7 @@ namespace autodiff {
                 s[j] += shift[j];
             }
 
-            int j = coord_to_index(s, t_grad.sizes());
+            int j = coord_to_index(s, a.sizes());
 
             for (int d = 0; d < sizes[0]; ++d) {
                 ch_grad_data[j + d] += t_grad_data[i + d];
@@ -289,7 +307,7 @@ namespace autodiff {
         result->grad_needed = t->grad_needed;
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
 
         return result;
@@ -345,7 +363,7 @@ namespace autodiff {
         result->grad_needed = (t1->grad_needed || t2->grad_needed);
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
 
         return result;
@@ -422,7 +440,7 @@ namespace autodiff {
         result->grad_needed = (t1->grad_needed || t2->grad_needed);
     
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
 
         return result;
@@ -492,7 +510,7 @@ namespace autodiff {
         result->grad_needed = (t1->grad_needed || t2->grad_needed);
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
 
         return result;
@@ -569,7 +587,7 @@ namespace autodiff {
         result->grad_needed = (t1->grad_needed || t2->grad_needed);
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
 
         return result;
@@ -644,7 +662,7 @@ namespace autodiff {
         s->grad_needed = (s->grad_needed || result->grad_needed);
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
 
         return result;
@@ -718,7 +736,7 @@ namespace autodiff {
         result->grad_needed = (t1->grad_needed || t2->grad_needed);
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
 
         return result;
@@ -785,7 +803,7 @@ namespace autodiff {
         result->grad_needed = input->grad_needed;
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
 
         return result;
@@ -836,7 +854,7 @@ namespace autodiff {
         result->grad_needed = input->grad_needed;
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
 
         return result;
@@ -887,7 +905,7 @@ namespace autodiff {
         result->grad_needed = input->grad_needed;
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
 
         return result;
@@ -938,7 +956,7 @@ namespace autodiff {
         result->grad_needed = input->grad_needed;
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
 
         return result;
@@ -998,7 +1016,7 @@ namespace autodiff {
         result->grad_needed = input->grad_needed;
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
 
         return result;
@@ -1072,7 +1090,7 @@ namespace autodiff {
         result->output = t->output;
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
 
         return result;
@@ -1155,7 +1173,7 @@ namespace autodiff {
         result->grad_needed = grad_needed;
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
 
         return result;
@@ -1173,7 +1191,7 @@ namespace autodiff {
         result->grad_needed = (t1->grad_needed || t2->grad_needed);
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
 
         return result;
@@ -1248,7 +1266,7 @@ namespace autodiff {
         result->grad_needed = (t1->grad_needed || t2->grad_needed);
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
 
         return result;
@@ -1266,7 +1284,7 @@ namespace autodiff {
         }
 
         auto& result = get_output<la::cpu::tensor_like<double>>(t);
-        la::cpu::copy(result, u);
+        la::cpu::axpy(result, 1, u);
         la::cpu::axpy(result, -1, v);
     }
 
@@ -1300,7 +1318,7 @@ namespace autodiff {
         }
 
         if (v_o->grad_needed) {
-            la::cpu::axpy(v_grad, 1, grad);
+            la::cpu::axpy(v_grad, -1, grad);
         }
     }
 
@@ -1314,7 +1332,7 @@ namespace autodiff {
         result->grad_needed = t->grad_needed;
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
 
         return result;
@@ -1342,7 +1360,7 @@ namespace autodiff {
 
         if (ch->grad_needed && n != 0.0) {
             double g = autodiff::get_grad<double>(t);
-            auto& z = autodiff::get_grad<la::cpu::tensor<double>>(ch);
+            auto& z = autodiff::get_grad<la::cpu::tensor_like<double>>(ch);
             la::cpu::axpy(z, g / n, v);
         }
     }
@@ -1357,7 +1375,7 @@ namespace autodiff {
         result->grad_needed = t->grad_needed;
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
 
         return result;
@@ -1408,7 +1426,7 @@ namespace autodiff {
         result->grad_needed = t->grad_needed;
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
 
         return result;
@@ -1459,7 +1477,7 @@ namespace autodiff {
         result->grad_needed = t->grad_needed;
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
 
         return result;
@@ -1512,7 +1530,7 @@ namespace autodiff {
         result->grad_needed = (t1->grad_needed || t2->grad_needed);
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
 
         return result;
@@ -1582,7 +1600,7 @@ namespace autodiff {
         result->output = storage->output;
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
 
         return result;
@@ -1607,7 +1625,10 @@ namespace autodiff {
                 auto& ch_t = get_output<la::cpu::tensor_like<double>>(ch);
                 la::cpu::weak_tensor<double> g { storage_t.data() + size, ch_t.sizes() };
                 ch->grad = std::make_shared<la::cpu::weak_tensor<double>>(g);
+                size += ch_t.vec_size();
             }
+
+            assert(size == storage_t.vec_size());
         }
 
         t->grad = storage->grad;
@@ -1632,7 +1653,7 @@ namespace autodiff {
         result->grad_needed = grad_needed;
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
 
         return result;
@@ -1725,7 +1746,7 @@ namespace autodiff {
         result->grad_needed = grad_needed;
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
 
         return result;
@@ -1807,7 +1828,7 @@ namespace autodiff {
         result->grad_needed = t->grad_needed;
     
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
 
         return result;
@@ -1853,7 +1874,7 @@ namespace autodiff {
         result->grad_needed = t->grad_needed;
     
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
 
         return result;
@@ -1905,7 +1926,7 @@ namespace autodiff {
         g.add_edge(result, t);
     
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
 
         return result;
@@ -1943,7 +1964,7 @@ namespace autodiff {
         result->grad_needed = t1->grad_needed;
     
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
 
         return result;
@@ -2015,7 +2036,7 @@ namespace autodiff {
         result->grad_needed = t1->grad_needed;
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
 
         return result;
@@ -2086,7 +2107,7 @@ namespace autodiff {
             std::make_tuple(p1, p2, d1, d2));
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
 
         return result;
@@ -2166,7 +2187,7 @@ namespace autodiff {
             std::make_tuple(p1, p2, d1, d2));
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
 
         return result;
@@ -2239,7 +2260,7 @@ namespace autodiff {
                 la::cpu::tensor<double>(), d1, d2, s1, s2);
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
     
         return result;
@@ -2318,7 +2339,7 @@ namespace autodiff {
         result->grad_needed = t->grad_needed;
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
     
         return result;
@@ -2391,7 +2412,7 @@ namespace autodiff {
         result->grad_needed = t->grad_needed;
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
     
         return result;
@@ -2472,7 +2493,7 @@ namespace autodiff {
         result->grad_needed = false;
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
 
         return result;
@@ -2518,7 +2539,7 @@ namespace autodiff {
         result->grad_needed = false;
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
 
         return result;
@@ -2565,7 +2586,7 @@ namespace autodiff {
         result->grad_needed = false;
 
         if (!g.lazy) {
-            eval_vertex(result, autodiff::interpreter::get_instance().eval_funcs);
+            eval_vertex(result, g.eval_funcs);
         }
 
         return result;

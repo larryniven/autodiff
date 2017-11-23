@@ -8,6 +8,9 @@ namespace autodiff {
 
     namespace gpu {
 
+        void zeros_eval(std::shared_ptr<op_t> t);
+        void zeros_grad(std::shared_ptr<op_t> t);
+
         void weak_var_eval(std::shared_ptr<op_t> t);
         void weak_var_grad(std::shared_ptr<op_t> t);
 
@@ -60,6 +63,7 @@ namespace autodiff {
         void dropout_mask_grad(std::shared_ptr<op_t> t);
 
         static std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> eval_funcs {
+            { "zeros", zeros_eval },
             { "var", var_eval },
             { "weak_var", weak_var_eval },
             { "subtensor", subtensor_eval },
@@ -81,6 +85,7 @@ namespace autodiff {
         };
 
         static std::unordered_map<std::string, std::function<void(std::shared_ptr<op_t>)>> grad_funcs {
+            { "zeros", zeros_grad },
             { "var", var_grad },
             { "weak_var", weak_var_grad },
             { "subtensor", subtensor_grad },
