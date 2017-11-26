@@ -13,7 +13,9 @@ namespace autodiff {
     {}
 
     computation_graph::computation_graph()
-        : lazy(false)
+        : eval_funcs(autodiff::eval_funcs)
+        , grad_funcs(autodiff::grad_funcs)
+        , lazy(false)
     {}
 
     computation_graph::computation_graph(computation_graph const& graph)
