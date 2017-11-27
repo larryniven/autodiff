@@ -247,6 +247,115 @@ namespace autodiff {
                     dshift.data(), dsizes.data(), dorigsizes.data() });
         }
 
+        struct split_block_op {
+
+            double *z_data;
+            double const *c_data;
+
+            unsigned int last_dim;
+            unsigned int c_rows;
+            unsigned int c_cols;
+
+            __device__
+            void operator()(int k)
+            {
+                int i = k / c_cols;
+                int j = k % c_cols;
+
+                z_data[(j / last_dim) * last_dim * c_rows + i * last_dim + j % last_dim]
+                    = c_data[k];
+            }
+
+        };
+
+        void split_block_eval(std::shared_ptr<op_t> t)
+        {
+            int block = *std::static_pointer_cast<int>(t->data);
+
+            auto c = get_child(t, 0);
+            auto& ct = get_output<la::gpu::tensor_like<double>>(c);
+
+            if (t->output == nullptr) {
+                la::gpu::tensor<double> z;
+
+                std::vector<unsigned int> sizes;
+                sizes.push_back(block);
+
+                std::vector<unsigned int> const& ct_sizes = ct.sizes();
+                assert(ct_sizes.size() >= 2);
+                assert(ct_sizes.back() % block == 0);
+
+                sizes.insert(sizes.end(), ct_sizes.begin(), ct_sizes.end() - 1);
+                sizes.push_back(ct_sizes.back() / block);
+
+                z.resize(sizes);
+
+                t->output = std::make_shared<la::gpu::tensor<double>>(z);
+            }
+
+            auto& z = get_output<la::gpu::tensor_like<double>>(t);
+
+            auto& c_mat = ct.as_matrix();
+
+            thrust::counting_iterator<int> c_begin { 0 };
+            thrust::counting_iterator<int> c_end = c_begin + ct.vec_size();
+
+            thrust::for_each(c_begin, c_end, split_block_op {
+                z.data(), ct.data(), c_mat.cols() / block, c_mat.rows(), c_mat.cols()
+            });
+        }
+
+        struct split_block_grad_op {
+
+            double const *t_grad_data;
+            double *c_grad_data;
+
+            unsigned int last_dim;
+            unsigned int c_rows;
+            unsigned int c_cols;
+
+            __device__
+            void operator()(int k)
+            {
+                int i = k / c_cols;
+                int j = k % c_cols;
+
+                c_grad_data[k] += t_grad_data[(j / last_dim) * last_dim * c_rows
+                    + i * last_dim + j % last_dim];
+            }
+
+        };
+
+        void split_block_grad(std::shared_ptr<op_t> t)
+        {
+            int block = *std::static_pointer_cast<int>(t->data);
+
+            auto c = get_child(t, 0);
+            auto& ct = get_output<la::cpu::tensor_like<double>>(c);
+
+            if (c->grad_needed && c->grad == nullptr) {
+                la::cpu::tensor<double> z;
+
+                la::cpu::resize_as(z, ct);
+
+                c->grad = std::make_shared<la::cpu::tensor<double>>(z);
+            }
+
+            if (c->grad_needed) {
+                auto& t_grad = get_grad<la::cpu::tensor_like<double>>(t);
+                auto& c_grad = get_grad<la::cpu::tensor_like<double>>(c);
+
+                auto& c_mat = ct.as_matrix();
+
+                thrust::counting_iterator<int> c_begin { 0 };
+                thrust::counting_iterator<int> c_end = c_begin + ct.vec_size();
+
+                thrust::for_each(c_begin, c_end, split_block_grad_op {
+                    t_grad.data(), c_grad.data(), c_mat.cols() / block, c_mat.rows(), c_mat.cols()
+                });
+            }
+        }
+
         void mul_eval(std::shared_ptr<op_t> t)
         {
             auto& a = get_output<la::gpu::tensor_like<double>>(get_child(t, 0));

@@ -37,7 +37,8 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
 
         autodiff::computation_graph g;
 
-        auto t = autodiff::mul(g.var(la::cpu::weak_tensor<double>{ x }), g.var(la::cpu::weak_tensor<double>{ A }));
+        auto t = autodiff::mul(g.var(la::cpu::weak_tensor<double>{ x }),
+            g.var(la::cpu::weak_tensor<double>{ A }));
 
         t->grad = std::make_shared<la::cpu::weak_tensor<double>>(la::cpu::weak_tensor<double> { grad });
 
@@ -46,8 +47,10 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
         auto r = get_child(t, 0);
         assert(r->grad != nullptr);
 
-        la::cpu::weak_vector<double> x_grad = autodiff::get_grad<la::cpu::tensor_like<double>>(get_child(t, 0)).as_vector();
-        la::cpu::weak_matrix<double> A_grad = autodiff::get_grad<la::cpu::tensor_like<double>>(get_child(t, 1)).as_matrix();
+        la::cpu::weak_vector<double> x_grad = autodiff::get_grad<la::cpu::tensor_like<double>>(
+            get_child(t, 0)).as_vector();
+        la::cpu::weak_matrix<double> A_grad = autodiff::get_grad<la::cpu::tensor_like<double>>(
+            get_child(t, 1)).as_matrix();
 
         ebt::assert_equals(50, x_grad(0));
         ebt::assert_equals(122, x_grad(1));
@@ -70,7 +73,8 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
 
         auto t = autodiff::logsoftmax(g.var(la::cpu::weak_tensor<double>{ x }));
         // autodiff::eval(t, autodiff::eval_funcs);
-        la::cpu::weak_vector<double> result = autodiff::get_output<la::cpu::tensor_like<double>>(t).as_vector();
+        la::cpu::weak_vector<double> result
+            = autodiff::get_output<la::cpu::tensor_like<double>>(t).as_vector();
 
         ebt::assert_equals(expected(0), result(0));
         ebt::assert_equals(expected(1), result(1));
@@ -81,11 +85,13 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
             la::cpu::vector<double> grad_expected {
                 0.909969426716728, -0.24472847121259633, -0.665240955655122 };
 
-            t->grad = std::make_shared<la::cpu::weak_tensor<double>>(la::cpu::weak_tensor<double>{ grad });
+            t->grad = std::make_shared<la::cpu::weak_tensor<double>>(
+                la::cpu::weak_tensor<double>{ grad });
             autodiff::grad(t, autodiff::grad_funcs);
 
-            la::cpu::weak_vector<double> grad_result = autodiff::get_grad<la::cpu::tensor_like<double>>(
-                autodiff::get_child(t, 0)).as_vector();
+            la::cpu::weak_vector<double> grad_result
+                = autodiff::get_grad<la::cpu::tensor_like<double>>(
+                    autodiff::get_child(t, 0)).as_vector();
 
             ebt::assert_equals(grad_expected(0), grad_result(0));
             ebt::assert_equals(grad_expected(1), grad_result(1));
@@ -99,11 +105,13 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
             la::cpu::vector<double> grad_expected {
                 -0.09003057328316189, 0.7552715287884038, -0.665240955655122 };
 
-            t->grad = std::make_shared<la::cpu::weak_tensor<double>>(la::cpu::weak_tensor<double>{ grad });
+            t->grad = std::make_shared<la::cpu::weak_tensor<double>>(
+                la::cpu::weak_tensor<double>{ grad });
             autodiff::grad(t, autodiff::grad_funcs);
 
-            la::cpu::weak_vector<double> grad_result = autodiff::get_grad<la::cpu::tensor_like<double>>(
-                autodiff::get_child(t, 0)).as_vector();
+            la::cpu::weak_vector<double> grad_result
+                = autodiff::get_grad<la::cpu::tensor_like<double>>(
+                    autodiff::get_child(t, 0)).as_vector();
 
             ebt::assert_equals(grad_expected(0), grad_result(0));
             ebt::assert_equals(grad_expected(1), grad_result(1));
@@ -117,11 +125,13 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
             la::cpu::vector<double> grad_expected {
                 -0.09003057328316189, -0.24472847121259633, 0.33475904434698833 };
 
-            t->grad = std::make_shared<la::cpu::weak_tensor<double>>(la::cpu::weak_tensor<double>{ grad });
+            t->grad = std::make_shared<la::cpu::weak_tensor<double>>(
+                la::cpu::weak_tensor<double>{ grad });
             autodiff::grad(t, autodiff::grad_funcs);
 
-            la::cpu::weak_vector<double> grad_result = autodiff::get_grad<la::cpu::tensor_like<double>>(
-                autodiff::get_child(t, 0)).as_vector();
+            la::cpu::weak_vector<double> grad_result
+                = autodiff::get_grad<la::cpu::tensor_like<double>>(
+                    autodiff::get_child(t, 0)).as_vector();
 
             ebt::assert_equals(grad_expected(0), grad_result(0));
             ebt::assert_equals(grad_expected(1), grad_result(1));
@@ -633,6 +643,38 @@ std::vector<std::pair<std::string, std::function<void(void)>>> tests {
         ebt::assert_equals(1, rt({0}));
         ebt::assert_equals(4, rt({1}));
         ebt::assert_equals(9, rt({2}));
+    }},
+
+    {"test-split-block", []() {
+        la::cpu::vector<double> v {
+            1, 2, 3, 4,
+            5, 6, 7, 8,
+            9, 10, 11, 12,
+            13, 14, 15, 16
+        };
+
+        la::cpu::tensor<double> t { v, {4, 4} };
+
+        autodiff::computation_graph g;
+        auto a = g.var(t);
+        auto b = autodiff::split_block(a, 2);
+
+        auto& bt = autodiff::get_output<la::cpu::tensor_like<double>>(b);
+
+        ebt::assert_equals(3, bt.dim());
+        ebt::assert_equals(2, bt.size(0));
+        ebt::assert_equals(4, bt.size(1));
+        ebt::assert_equals(2, bt.size(2));
+
+        ebt::assert_equals(1, bt({0, 0, 0}));
+        ebt::assert_equals(2, bt({0, 0, 1}));
+        ebt::assert_equals(5, bt({0, 1, 0}));
+        ebt::assert_equals(6, bt({0, 1, 1}));
+
+        ebt::assert_equals(3, bt({1, 0, 0}));
+        ebt::assert_equals(4, bt({1, 0, 1}));
+        ebt::assert_equals(7, bt({1, 1, 0}));
+        ebt::assert_equals(8, bt({1, 1, 1}));
     }},
 };
 

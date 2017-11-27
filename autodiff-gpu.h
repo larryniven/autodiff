@@ -17,6 +17,9 @@ namespace autodiff {
         void subtensor_eval(std::shared_ptr<op_t> t);
         void subtensor_grad(std::shared_ptr<op_t> t);
 
+        void split_block_eval(std::shared_ptr<op_t> t);
+        void split_block_grad(std::shared_ptr<op_t> t);
+
         void mul_eval(std::shared_ptr<op_t> t);
         void mul_grad(std::shared_ptr<op_t> t);
 
@@ -67,6 +70,7 @@ namespace autodiff {
             { "var", var_eval },
             { "weak_var", weak_var_eval },
             { "subtensor", subtensor_eval },
+            { "split_block", split_block_eval },
             { "mul", mul_eval },
             { "emul", emul_eval },
             { "emul_to", emul_to_eval },
@@ -89,6 +93,7 @@ namespace autodiff {
             { "var", var_grad },
             { "weak_var", weak_var_grad },
             { "subtensor", subtensor_grad },
+            { "split_block", split_block_grad },
             { "mul", mul_grad },
             { "emul", emul_grad },
             { "emul_to", emul_to_grad },

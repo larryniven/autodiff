@@ -244,14 +244,26 @@ namespace autodiff {
 
         std::vector<unsigned int> const& a_sizes = a.sizes();
 
+        // for (int i = 0; i < c.vec_size(); i += sizes[0]) {
+        //     std::vector<unsigned int> s = index_to_coord(i, sizes);
+
+        //     for (int j = 0; j < s.size(); ++j) {
+        //         s[j] += shift[j];
+        //     }
+
+        //     int j = coord_to_index(s, a_sizes);
+
+        //     for (int d = 0; d < sizes[0]; ++d) {
+        //         c_data[i + d] = a_data[j + d];
+        //     }
+        // }
+
+        int shift_index = coord_to_index(shift, a_sizes);
+
         for (int i = 0; i < c.vec_size(); i += sizes[0]) {
             std::vector<unsigned int> s = index_to_coord(i, sizes);
 
-            for (int j = 0; j < s.size(); ++j) {
-                s[j] += shift[j];
-            }
-
-            int j = coord_to_index(s, a_sizes);
+            int j = coord_to_index(s, a_sizes) + shift_index;
 
             for (int d = 0; d < sizes[0]; ++d) {
                 c_data[i + d] = a_data[j + d];
@@ -271,29 +283,149 @@ namespace autodiff {
         std::tie(shift, sizes) = *std::static_pointer_cast<std::pair<std::vector<unsigned int>,
             std::vector<unsigned int>>>(t->data);
 
-        if (ch->grad == nullptr) {
+        if (ch->grad_needed && ch->grad == nullptr) {
             la::cpu::tensor<double> c;
             c.resize(a.sizes());
             ch->grad = std::make_shared<la::cpu::tensor<double>>(std::move(c));
         }
 
-        auto& ch_grad = get_grad<la::cpu::tensor_like<double>>(ch);
-        auto& t_grad = get_grad<la::cpu::tensor_like<double>>(t);
+        if (ch->grad_needed) {
+            auto& ch_grad = get_grad<la::cpu::tensor_like<double>>(ch);
+            auto& t_grad = get_grad<la::cpu::tensor_like<double>>(t);
 
-        double *ch_grad_data = ch_grad.data();
-        double const *t_grad_data = t_grad.data();
+            double *ch_grad_data = ch_grad.data();
+            double const *t_grad_data = t_grad.data();
 
-        for (int i = 0; i < t_grad.vec_size(); i += sizes[0]) {
-            std::vector<unsigned int> s = index_to_coord(i, sizes);
+            // for (int i = 0; i < t_grad.vec_size(); i += sizes[0]) {
+            //     std::vector<unsigned int> s = index_to_coord(i, sizes);
 
-            for (int j = 0; j < s.size(); ++j) {
-                s[j] += shift[j];
+            //     for (int j = 0; j < s.size(); ++j) {
+            //         s[j] += shift[j];
+            //     }
+
+            //     int j = coord_to_index(s, a.sizes());
+
+            //     for (int d = 0; d < sizes[0]; ++d) {
+            //         ch_grad_data[j + d] += t_grad_data[i + d];
+            //     }
+            // }
+
+            std::vector<unsigned int> const& a_sizes = a.sizes();
+
+            int shift_index = coord_to_index(shift, a_sizes);
+
+            for (int i = 0; i < t_grad.vec_size(); i += sizes[0]) {
+                std::vector<unsigned int> s = index_to_coord(i, sizes);
+
+                int j = coord_to_index(s, a_sizes) + shift_index;
+
+                for (int d = 0; d < sizes[0]; ++d) {
+                    ch_grad_data[j + d] += t_grad_data[i + d];
+                }
             }
+        }
+    }
 
-            int j = coord_to_index(s, a.sizes());
+    std::shared_ptr<op_t> split_block(std::shared_ptr<op_t> t, int block)
+    {
+        auto& g = *t->graph;
 
-            for (int d = 0; d < sizes[0]; ++d) {
-                ch_grad_data[j + d] += t_grad_data[i + d];
+        std::shared_ptr<op_t> result = g.make_node("split_block");
+
+        result->data = std::make_shared<int>(block);
+
+        g.add_edge(result, t);
+
+        result->grad_needed = t->grad_needed;
+
+        if (!g.lazy) {
+            eval_vertex(result, g.eval_funcs);
+        }
+
+        return result;
+    }
+
+    void split_block_eval(std::shared_ptr<op_t> t)
+    {
+        int block = *std::static_pointer_cast<int>(t->data);
+
+        auto c = get_child(t, 0);
+        auto& ct = get_output<la::cpu::tensor_like<double>>(c);
+
+        if (t->output == nullptr) {
+            la::cpu::tensor<double> z;
+
+            std::vector<unsigned int> sizes;
+            sizes.push_back(block);
+
+            std::vector<unsigned int> const& ct_sizes = ct.sizes();
+            assert(ct_sizes.size() >= 2);
+            assert(ct_sizes.back() % block == 0);
+
+            sizes.insert(sizes.end(), ct_sizes.begin(), ct_sizes.end() - 1);
+            sizes.push_back(ct_sizes.back() / block);
+
+            z.resize(sizes);
+
+            t->output = std::make_shared<la::cpu::tensor<double>>(z);
+        }
+
+        auto& z = get_output<la::cpu::tensor_like<double>>(t);
+
+        auto& c_mat = ct.as_matrix();
+        double *z_data = z.data();
+        double const *c_data = ct.data();
+
+        unsigned int c_rows = c_mat.rows();
+        unsigned int c_cols = c_mat.cols();
+        unsigned int last_dim = c_cols / block;
+
+        for (int i = 0; i < c_rows; ++i) {
+            for (int j = 0; j < c_cols; ++j) {
+                // z({j / last_dim, i, j % last_dim}) = c_mat(i, j);
+
+                z_data[(j / last_dim) * last_dim * c_rows + i * last_dim + j % last_dim]
+                    = c_data[i * c_cols + j];
+            }
+        }
+    }
+
+    void split_block_grad(std::shared_ptr<op_t> t)
+    {
+        int block = *std::static_pointer_cast<int>(t->data);
+
+        auto c = get_child(t, 0);
+        auto& ct = get_output<la::cpu::tensor_like<double>>(c);
+
+        if (c->grad_needed && c->grad == nullptr) {
+            la::cpu::tensor<double> z;
+
+            la::cpu::resize_as(z, ct);
+
+            c->grad = std::make_shared<la::cpu::tensor<double>>(z);
+        }
+
+        if (c->grad_needed) {
+            auto& t_grad = get_grad<la::cpu::tensor_like<double>>(t);
+            auto& c_grad = get_grad<la::cpu::tensor_like<double>>(c);
+
+            auto& c_mat = ct.as_matrix();
+            double *c_grad_data = c_grad.data();
+            double const *t_grad_data = t_grad.data();
+
+            unsigned int c_rows = c_mat.rows();
+            unsigned int c_cols = c_mat.cols();
+            unsigned int last_dim = c_cols / block;
+
+            for (int i = 0; i < c_rows; ++i) {
+                for (int j = 0; j < c_cols; ++j) {
+                    // z({j / last_dim, i, j % last_dim}) = c_mat(i, j);
+
+                    c_grad_data[i * c_cols + j]
+                        += t_grad_data[(j / last_dim) * last_dim * c_rows
+                            + i * last_dim + j % last_dim];
+                    
+                }
             }
         }
     }
