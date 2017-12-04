@@ -35,8 +35,14 @@ namespace autodiff {
         void tanh_eval(std::shared_ptr<op_t> t);
         void tanh_grad(std::shared_ptr<op_t> t);
 
+        void relu_eval(std::shared_ptr<op_t> t);
+        void relu_grad(std::shared_ptr<op_t> t);
+
         void add_eval(std::shared_ptr<op_t> t);
         void add_grad(std::shared_ptr<op_t> t);
+
+        void add_to_eval(std::shared_ptr<op_t> t);
+        void add_to_grad(std::shared_ptr<op_t> t);
 
         void sub_eval(std::shared_ptr<op_t> t);
         void sub_grad(std::shared_ptr<op_t> t);
@@ -76,7 +82,9 @@ namespace autodiff {
             { "emul_to", emul_to_eval },
             { "logistic", logistic_eval },
             { "tanh", tanh_eval },
+            { "relu", relu_eval },
             { "add", add_eval },
+            { "add_to", add_to_eval },
             { "sub", sub_eval },
             { "logsoftmax", logsoftmax_eval },
             { "dot", dot_eval },
@@ -99,7 +107,9 @@ namespace autodiff {
             { "emul_to", emul_to_grad },
             { "logistic", logistic_grad },
             { "tanh", tanh_grad },
+            { "relu", relu_grad },
             { "add", add_grad },
+            { "add_to", add_to_grad },
             { "sub", sub_grad },
             { "logsoftmax", logsoftmax_grad },
             { "dot", dot_grad },

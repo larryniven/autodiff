@@ -690,6 +690,42 @@ namespace autodiff {
             }
         }
 
+        void relu_eval(std::shared_ptr<op_t> t)
+        {
+            auto& v = get_output<la::gpu::tensor_like<double>>(get_child(t, 0));
+
+            if (t->output == nullptr) {
+                la::gpu::tensor<double> z;
+                la::gpu::resize_as(z, v);
+                t->output = std::make_shared<la::gpu::tensor<double>>(std::move(z));
+            }
+
+            auto& z = get_output<la::gpu::tensor_like<double>>(t);
+
+            op::gpu::relu(z, v);
+        }
+
+        void relu_grad(std::shared_ptr<op_t> t)
+        {
+            auto& grad = get_grad<la::gpu::tensor_like<double>>(t);
+            auto& output = get_output<la::gpu::tensor_like<double>>(t);
+
+            auto ch = get_child(t, 0);
+            auto& ch_t = get_output<la::gpu::tensor_like<double>>(ch);
+
+            if (ch->grad_needed && ch->grad == nullptr) {
+                la::gpu::tensor<double> g;
+                la::gpu::resize_as(g, ch_t);
+                ch->grad = std::make_shared<la::gpu::tensor<double>>(std::move(g));
+            }
+
+            auto& result = get_grad<la::gpu::tensor_like<double>>(ch);
+
+            if (ch->grad_needed) {
+                op::gpu::irelu_grad(result, grad, output);
+            }
+        }
+
         void add_eval(std::shared_ptr<op_t> t)
         {
             auto& g = *t->graph;
@@ -763,6 +799,70 @@ namespace autodiff {
             }
         }
 
+        void add_to_eval(std::shared_ptr<op_t> t)
+        {
+            auto& g = *t->graph;
+
+            assert(g.adj[t->id].size() > 0);
+
+            for (int i = 2; i < g.adj[t->id].size(); ++i) {
+                if (get_output<la::gpu::tensor_like<double>>(get_child(t, i-1)).vec_size()
+                        != get_output<la::gpu::tensor_like<double>>(get_child(t, i)).vec_size())
+                {
+                    std::ostringstream oss;
+                    oss << get_output<la::gpu::tensor_like<double>>(get_child(t, i-1)).vec_size()
+                        << " != "
+                        << get_output<la::gpu::tensor_like<double>>(get_child(t, i)).vec_size();
+                    throw std::logic_error(oss.str());
+                }
+            }
+
+            auto storage = get_child(t, 0);
+            assert(storage->output != nullptr);
+
+            auto& result = get_output<la::gpu::tensor_like<double>>(t);
+
+            for (int i = 1; i < g.adj[t->id].size(); ++i) {
+                auto& u = get_output<la::gpu::tensor_like<double>>(get_child(t, i));
+
+                la::gpu::axpy(result, 1, u);
+            }
+
+            if (t->grad_needed && storage->grad == nullptr) {
+                la::gpu::tensor<double> z;
+                la::gpu::tensor_like<double>& m
+                    = get_output<la::gpu::tensor_like<double>>(get_child(t, 1));
+                la::gpu::resize_as(z, m);
+                storage->grad = std::make_shared<la::gpu::tensor<double>>(std::move(z));
+            }
+
+            t->grad = storage->grad;
+        }
+
+        void add_to_grad(std::shared_ptr<op_t> t)
+        {
+            auto& g = *t->graph;
+
+            auto& grad = get_grad<la::gpu::tensor_like<double>>(t);
+
+            for (int i = 1; i < g.adj[t->id].size(); ++i) {
+                auto c = get_child(t, i);
+
+                if (c->grad_needed && c->grad == nullptr) {
+                    auto& c_t = get_output<la::gpu::tensor_like<double>>(c);
+                    la::gpu::tensor<double> g;
+                    la::gpu::resize_as(g, c_t);
+                    c->grad = std::make_shared<la::gpu::tensor<double>>(std::move(g));
+                }
+
+                auto& u = get_grad<la::gpu::tensor_like<double>>(c);
+
+                if (c->grad_needed) {
+                    la::gpu::axpy(u, 1, grad);
+                }
+            }
+        }
+    
         void sub_eval(std::shared_ptr<op_t> t)
         {
             auto& u = get_output<la::gpu::tensor_like<double>>(get_child(t, 0));

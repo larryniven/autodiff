@@ -24,12 +24,12 @@ namespace autodiff {
                 la::gpu::tensor_like<double> const& grad,
                 la::gpu::tensor_like<double> const& output);
 
-            void relu(la::gpu::vector_like<double>& u,
-                la::gpu::vector_like<double> const& v);
+            void relu(la::gpu::tensor_like<double>& u,
+                la::gpu::tensor_like<double> const& v);
 
-            void irelu_grad(la::gpu::vector_like<double>& result,
-                la::gpu::vector_like<double> const& grad,
-                la::gpu::vector_like<double> const& output);
+            void irelu_grad(la::gpu::tensor_like<double>& result,
+                la::gpu::tensor_like<double> const& grad,
+                la::gpu::tensor_like<double> const& output);
 
             void tanh(la::gpu::tensor_like<double>& u,
                 la::gpu::tensor_like<double> const& v);
