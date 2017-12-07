@@ -331,19 +331,19 @@ namespace autodiff {
             int block = *std::static_pointer_cast<int>(t->data);
 
             auto c = get_child(t, 0);
-            auto& ct = get_output<la::cpu::tensor_like<double>>(c);
+            auto& ct = get_output<la::gpu::tensor_like<double>>(c);
 
             if (c->grad_needed && c->grad == nullptr) {
-                la::cpu::tensor<double> z;
+                la::gpu::tensor<double> z;
 
-                la::cpu::resize_as(z, ct);
+                la::gpu::resize_as(z, ct);
 
-                c->grad = std::make_shared<la::cpu::tensor<double>>(z);
+                c->grad = std::make_shared<la::gpu::tensor<double>>(z);
             }
 
             if (c->grad_needed) {
-                auto& t_grad = get_grad<la::cpu::tensor_like<double>>(t);
-                auto& c_grad = get_grad<la::cpu::tensor_like<double>>(c);
+                auto& t_grad = get_grad<la::gpu::tensor_like<double>>(t);
+                auto& c_grad = get_grad<la::gpu::tensor_like<double>>(c);
 
                 auto& c_mat = ct.as_matrix();
 
