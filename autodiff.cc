@@ -40,7 +40,7 @@ namespace autodiff {
             v->graph = this;
         }
 
-        return this*;
+        return *this;
     }
 
     std::shared_ptr<op_t> computation_graph::var()
