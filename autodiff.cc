@@ -39,6 +39,8 @@ namespace autodiff {
         for (auto& v: vertices) {
             v->graph = this;
         }
+
+        return this*;
     }
 
     std::shared_ptr<op_t> computation_graph::var()
